@@ -1,0 +1,28 @@
+{
+  "historical_figures": [
+    {
+      "id": 1,
+      "name": "朱可夫",
+      "title": "苏联元帅",
+      "period": "二战",
+      "achievements": ["斯大林格勒保卫战", "柏林战役"],
+      "description": "苏联著名军事统帅，二战期间的重要将领"
+    },
+    {
+      "id": 2,
+      "name": "隆美尔",
+      "title": "德国陆军元帅",
+      "period": "二战", 
+      "achievements": ["北非战役", "沙漠之狐"],
+      "description": "德国著名军事指挥官，以战术才能闻名"
+    },
+    {
+      "id": 3,
+      "name": "巴顿",
+      "title": "美国四星上将",
+      "period": "二战",
+      "achievements": ["西西里岛战役", "第三集团军"],
+      "description": "美国著名装甲战专家和军事指挥官"
+    }
+  ]
+}

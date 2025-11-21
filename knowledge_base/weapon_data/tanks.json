@@ -1,0 +1,30 @@
+{
+  "tanks": [
+    {
+      "name": "T-34",
+      "country": "苏联",
+      "period": "二战",
+      "type": "中型坦克",
+      "production": "84,070+ units",
+      "characteristics": {
+        "armor": "45mm",
+        "gun": "76.2mm",
+        "speed": "55 km/h"
+      },
+      "significance": "改变了坦克设计理念"
+    },
+    {
+      "name": "虎式坦克",
+      "country": "德国",
+      "period": "二战",
+      "type": "重型坦克", 
+      "production": "1,355 units",
+      "characteristics": {
+        "armor": "100-150mm",
+        "gun": "88mm KwK 36",
+        "speed": "38 km/h"
+      },
+      "significance": "重型坦克的代表"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+# .dockerignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*$py.class
+__pycache__/
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.env
+.git
+.vscode
+node_modules
+logs/
+generated_content/
+user_sessions/
+
