@@ -10,13 +10,12 @@ services:
       - "8000:8000"
     volumes:
       - ./knowledge_base:/app/knowledge_base
-      - ./generated_content:/app/generated_content
+      - ./generated_content:/app/generated_content  # 👈 新增这行！
       - ./logs:/app/logs
     env_file:
-      - .env   # ← 从项目根目录的 .env 文件加载环境变量
+      - .env
     environment:
-      # 数据库和 Redis 连接信息仍通过 environment 显式指定（不放在 .env 中更安全）
-      - DATABASE_URL=postgresql://user:password@db:5432/mrzhuge
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-mrzhuge}
       - REDIS_URL=redis://redis:6379
     depends_on:
       - db
@@ -25,9 +24,9 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_DB: mrzhuge
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${POSTGRES_DB:-mrzhuge}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:

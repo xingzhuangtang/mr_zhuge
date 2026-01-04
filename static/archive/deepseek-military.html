@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>军事历史AI助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f1419;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 主容器 */
+        .main-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* 左侧对话历史面板 */
+        .chat-history {
+            width: 280px;
+            background: #141a23;
+            border-right: 1px solid #2a2f3a;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+        
+        .chat-history.collapsed {
+            width: 0;
+            overflow: hidden;
+        }
+        
+        .history-header {
+            padding: 20px;
+            border-bottom: 1px solid #2a2f3a;
+            background: #1a2029;
+        }
+        
+        .history-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+        
+        .new-chat-btn {
+            width: 100%;
+            padding: 10px;
+            background: #2a2f3a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .new-chat-btn:hover {
+            background: #364152;
+        }
+        
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .history-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #1a2029;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .history-item:hover {
+            background: #222a36;
+            border-left-color: #ffd700;
+        }
+        
+        .history-item.active {
+            background: #252d3c;
+            border-left-color: #ffd700;
+        }
+        
+        .history-item-title {
+            font-size: 13px;
+            color: #e2e8f0;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .history-item-time {
+            font-size: 11px;
+            color: #64748b;
+        }
+        
+        /* 聊天区域 */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .chat-header {
+            padding: 20px;
+            background: #141a23;
+            border-bottom: 1px solid #2a2f3a;
+            text-align: center;
+        }
+        
+        .chat-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+        
+        .chat-subtitle {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+        
+        .collapse-history-btn {
+            position: absolute;
+            left: 290px;
+            top: 20px;
+            background: #2a2f3a;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            z-index: 1000;
+        }
+        
+        .collapse-history-btn:hover {
+            background: #364152;
+        }
+        
+        .collapse-history-btn.collapsed {
+            left: 10px;
+        }
+        
+        /* 对话区域 */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #0f1419;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        .message.user {
+            flex-direction: row-reverse;
+        }
+        
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .message.user .message-avatar {
+            background: #ffd700;
+            color: #0f1419;
+        }
+        
+        .message.ai .message-avatar {
+            background: #2a2f3a;
+            color: #ffd700;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 15px 18px;
+            border-radius: 16px;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-content {
+            background: #ffd700;
+            color: #0f1419;
+        }
+        
+        .message.ai .message-content {
+            background: #1a2029;
+            color: #e2e8f0;
+            border: 1px solid #2a2f3a;
+        }
+        
+        .message.thinking .message-content {
+            background: #2a2f3a;
+            color: #94a3b8;
+            font-style: italic;
+        }
+        
+        /* 图片样式 */
+        .message-image {
+            margin: 10px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .message-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+            max-height: 300px;
+            object-fit: cover;
+        }
+        
+        .image-caption {
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #e2e8f0;
+            font-size: 13px;
+            text-align: center;
+        }
+        
+        /* 可视化按钮 */
+        .visualization-button {
+            margin-top: 15px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .visualization-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+        
+        .visualization-button:active {
+            transform: translateY(0);
+        }
+        
+        .visualization-button.hidden {
+            display: none;
+        }
+        
+        /* 输入区域 */
+        .chat-input-area {
+            padding: 20px;
+            background: #141a23;
+            border-top: 1px solid #2a2f3a;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        
+        .input-container {
+            flex: 1;
+            position: relative;
+            background: #1a2029;
+            border: 1px solid #2a2f3a;
+            border-radius: 20px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            transition: border-color 0.2s ease;
+        }
+        
+        .input-container:focus-within {
+            border-color: #ffd700;
+            box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.3);
+        }
+        
+        .chat-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 14px;
+            line-height: 1.4;
+            resize: none;
+            max-height: 120px;
+            min-height: 20px;
+        }
+        
+        .chat-input::placeholder {
+            color: #64748b;
+        }
+        
+        .send-button {
+            background: #ffd700;
+            color: #0f1419;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        
+        .send-button:hover {
+            background: #ffed4e;
+            transform: scale(1.05);
+        }
+        
+        .send-button:disabled {
+            background: #2a2f3a;
+            color: #64748b;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* 滚动条样式 */
+        .chat-messages::-webkit-scrollbar,
+        .history-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track,
+        .history-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb,
+        .history-list::-webkit-scrollbar-thumb {
+            background: #2a2f3a;
+            border-radius: 3px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb:hover,
+        .history-list::-webkit-scrollbar-thumb:hover {
+            background: #364152;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .chat-history {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                z-index: 1000;
+                transform: translateX(-100%);
+            }
+            
+            .chat-history.show {
+                transform: translateX(0);
+            }
+            
+            .collapse-history-btn {
+                display: none;
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+        }
+        
+        /* 动画 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message {
+            animation: fadeIn 0.4s ease;
+        }
+        
+        /* 加载状态 */
+        .loading-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+        
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+        
+        .loading-dot {
+            width: 6px;
+            height: 6px;
+            background: #94a3b8;
+            border-radius: 50%;
+            animation: loadingPulse 1.4s infinite ease-in-out;
+        }
+        
+        .loading-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        
+        .loading-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        
+        @keyframes loadingPulse {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 左侧对话历史 -->
+        <div class="chat-history" id="chatHistory">
+            <div class="history-header">
+                <div class="history-title">对话历史</div>
+                <button class="new-chat-btn" onclick="startNewChat()">+ 新对话</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <!-- 历史对话列表将在这里动态生成 -->
+            </div>
+        </div>
+        
+        <!-- 主要聊天区域 -->
+        <div class="chat-area">
+            <button class="collapse-history-btn" onclick="toggleHistory()">← 收起历史</button>
+            
+            <div class="chat-header">
+                <div class="chat-title">🏛️ 军事历史AI助手</div>
+                <div class="chat-subtitle">专业的军事历史知识库 · 支持3D战役重现</div>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <!-- 欢迎消息 -->
+                <div class="message ai">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        欢迎使用军事历史AI助手！<br><br>
+                        我可以为您提供：<br>
+                        • 📚 详细的军事历史知识<br>
+                        • 🗺️ 战役地形地貌分析<br>
+                        • ⚔️ 战略战术解读<br>
+                        • 🖼️ 相关历史图片<br>
+                        • 🎮 3D战役重现<br><br>
+                        请输入您想了解的战役或军事历史问题，我将为您提供专业的解答！
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input-area">
+                <div class="input-container">
+                    <textarea 
+                        id="chatInput" 
+                        class="chat-input" 
+                        placeholder="请输入您想了解的战役或军事历史问题..."
+                        rows="1"
+                        oninput="autoResizeTextarea(this)"
+                        onkeydown="handleKeyDown(event)"
+                    ></textarea>
+                </div>
+                <button class="send-button" id="sendBtn" onclick="sendMessage()">
+                    ➤
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentChatId = generateChatId();
+        let chatHistory = JSON.parse(localStorage.getItem('militaryChatHistory') || '[]');
+        let isProcessing = false;
+        let battleContext = null; // 保存战役上下文
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadChatHistory();
+            loadCurrentChatHistory();
+            autoResizeTextarea(document.getElementById('chatInput'));
+        });
+        
+        // 生成聊天ID
+        function generateChatId() {
+            return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        // 保存聊天历史到本地存储
+        function saveChatHistory() {
+            localStorage.setItem('militaryChatHistory', JSON.stringify(chatHistory));
+        }
+        
+        // 加载聊天历史
+        function loadChatHistory() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            if (chatHistory.length === 0) {
+                historyList.innerHTML = '<div style="padding: 20px; text-align: center; color: #64748b;">暂无对话历史</div>';
+                return;
+            }
+            
+            chatHistory.forEach((chat, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                if (chat.id === currentChatId) {
+                    historyItem.classList.add('active');
+                }
+                
+                historyItem.innerHTML = `
+                    <div class="history-item-title">${chat.title || '无标题对话'}</div>
+                    <div class="history-item-time">${formatTime(chat.timestamp)}</div>
+                `;
+                
+                historyItem.addEventListener('click', () => switchToChat(chat.id));
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        // 格式化时间
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 1000 * 60 * 60 * 24) {
+                return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                return date.toLocaleDateString('zh-CN');
+            }
+        }
+        
+        // 切换聊天
+        function switchToChat(chatId) {
+            currentChatId = chatId;
+            loadCurrentChatHistory();
+            loadChatHistory();
+        }
+        
+        // 加载当前聊天历史
+        function loadCurrentChatHistory() {
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.innerHTML = '';
+            
+            const currentChat = chatHistory.find(chat => chat.id === currentChatId);
+            if (currentChat && currentChat.messages) {
+                currentChat.messages.forEach(message => {
+                    addMessageToDOM(message.content, message.type);
+                });
+            }
+            
+            // 如果是空聊天，添加欢迎消息
+            if (!currentChat || !currentChat.messages || currentChat.messages.length === 0) {
+                addWelcomeMessage();
+            }
+        }
+        
+        // 添加欢迎消息
+        function addWelcomeMessage() {
+            const messagesContainer = document.getElementById('chatMessages');
+            const welcomeMessage = document.createElement('div');
+            welcomeMessage.className = 'message ai';
+            welcomeMessage.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    欢迎使用军事历史AI助手！<br><br>
+                    我可以为您提供：<br>
+                    • 📚 详细的军事历史知识<br>
+                    • 🗺️ 战役地形地貌分析<br>
+                    • ⚔️ 战略战术解读<br>
+                    • 🖼️ 相关历史图片<br>
+                    • 🎮 3D战役重现<br><br>
+                    请输入您想了解的战役或军事历史问题，我将为您提供专业的解答！
+                </div>
+            `;
+            messagesContainer.appendChild(welcomeMessage);
+        }
+        
+        // 新对话
+        function startNewChat() {
+            currentChatId = generateChatId();
+            document.getElementById('chatMessages').innerHTML = '';
+            addWelcomeMessage();
+            document.getElementById('chatInput').value = '';
+            battleContext = null; // 重置战役上下文
+            loadChatHistory();
+        }
+        
+        // 收起/展开历史面板
+        function toggleHistory() {
+            const history = document.getElementById('chatHistory');
+            const btn = document.querySelector('.collapse-history-btn');
+            
+            if (history.classList.contains('collapsed')) {
+                history.classList.remove('collapsed');
+                btn.classList.remove('collapsed');
+                btn.textContent = '← 收起历史';
+            } else {
+                history.classList.add('collapsed');
+                btn.classList.add('collapsed');
+                btn.textContent = '→ 展开历史';
+            }
+        }
+        
+        // 自动调整textarea高度
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+            
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = !textarea.value.trim();
+        }
+        
+        // 键盘事件处理
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        // 发送消息
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message || isProcessing) return;
+            
+            isProcessing = true;
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            
+            // 添加用户消息
+            addMessageToDOM(message, 'user');
+            input.value = '';
+            autoResizeTextarea(input);
+            
+            // 添加AI思考状态
+            const thinkingMessage = addMessageToDOM('正在分析您的问题...', 'thinking');
+            
+            try {
+                // 保存用户消息到历史
+                saveMessageToHistory(message, 'user');
+                
+                // 调用AI服务
+                const aiResponse = await callAIService(message);
+                
+                // 移除思考消息
+                thinkingMessage.remove();
+                
+                // 添加AI回复
+                const aiMessage = addMessageToDOM(aiResponse.content, 'ai');
+                
+                // 如果包含图片，显示图片
+                if (aiResponse.images && aiResponse.images.length > 0) {
+                    displayImages(aiResponse.images, aiMessage);
+                }
+                
+                // 如果识别到战役问题，显示可视化按钮
+                if (aiResponse.isBattle) {
+                    showVisualizationButton(aiResponse.battleName, aiMessage);
+                }
+                
+                // 保存AI回复到历史
+                saveMessageToHistory(aiMessage.innerHTML, 'ai');
+                
+            } catch (error) {
+                thinkingMessage.remove();
+                addMessageToDOM('抱歉，AI助手暂时无法响应，请稍后再试。', 'ai');
+                console.error('AI服务错误:', error);
+            }
+            
+            isProcessing = false;
+            sendBtn.disabled = false;
+        }
+        
+        // 调用AI服务 - 连接真实大语言模型
+        async function callAIService(message) {
+            try {
+                // 调用真实的大语言模型API
+                const response = await fetch('/api/v1/llm/military-analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: message
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // 检测是否是战役相关问题
+                const battleName = detectBattleName(message);
+                
+                if (battleName) {
+                    battleContext = { name: battleName, info: getBattleInfo(battleName) };
+                    return {
+                        content: data.response,
+                        isBattle: true,
+                        battleName: battleName
+                    };
+                } else {
+                    return {
+                        content: data.response,
+                        isBattle: false,
+                        images: []
+                    };
+                }
+                
+            } catch (error) {
+                console.error('AI服务调用失败:', error);
+                
+                // 如果API调用失败，返回友好的错误信息
+                return {
+                    content: '抱歉，AI助手暂时无法响应，请稍后再试或检查网络连接。',
+                    isBattle: false,
+                    images: []
+                };
+            }
+        }
+        
+        // 检测战役名称
+        function detectBattleName(message) {
+            const knownBattles = ['赤壁之战', '马拉松战役', '黑斯廷斯战役', '滑铁卢战役', '葛底斯堡战役'];
+            
+            for (let battle of knownBattles) {
+                if (message.includes(battle)) {
+                    return battle;
+                }
+            }
+            
+            // 模糊匹配
+            if (message.includes('赤壁')) return '赤壁之战';
+            if (message.includes('马拉松')) return '马拉松战役';
+            if (message.includes('黑斯廷斯')) return '黑斯廷斯战役';
+            if (message.includes('滑铁卢')) return '滑铁卢战役';
+            if (message.includes('葛底斯堡')) return '葛底斯堡战役';
+            
+            return null;
+        }
+        
+        // 获取战役信息
+        function getBattleInfo(battleName) {
+            const battles = {
+                '赤壁之战': {
+                    year: 208,
+                    location: '长江赤壁',
+                    participants: '曹操军 vs 孙刘联军',
+                    description: '三国时期最著名的水战，孙刘联军以火攻大败曹操80万大军，奠定了三国鼎立的基础。'
+                },
+                '马拉松战役': {
+                    year: -490,
+                    location: '马拉松平原',
+                    participants: '波斯军 vs 希腊联军',
+                    description: '古希腊重装步兵方阵首次击败波斯帝国的弓箭手，标志着希腊文明的胜利。'
+                },
+                '黑斯廷斯战役': {
+                    year: 1066,
+                    location: '黑斯廷斯',
+                    participants: '盎格鲁-撒克逊军 vs 诺曼军',
+                    description: '诺曼征服英格兰的决定性战役，威廉征服者击败哈罗德二世，改变了英国历史。'
+                },
+                '滑铁卢战役': {
+                    year: 1815,
+                    location: '滑铁卢',
+                    participants: '拿破仑帝国军 vs 反法同盟军',
+                    description: '拿破仑的最后一战，威灵顿公爵与布吕歇尔将军联手击败皇帝，结束了拿破仑时代。'
+                },
+                '葛底斯堡战役': {
+                    year: 1863,
+                    location: '葛底斯堡',
+                    participants: '南方军 vs 联邦军',
+                    description: '美国内战的转折点，联邦军击败南方军，阻止了南方独立的企图。'
+                }
+            };
+            
+            return battles[battleName] || null;
+        }
+        
+        // 生成战役回复（带图片搜索功能）
+        async function generateBattleResponseWithImages(message, battleName) {
+            const battleInfo = getBattleInfo(battleName);
+            if (!battleInfo) {
+                return {
+                    content: '抱歉，我暂时没有关于这场战役的详细信息。',
+                    isBattle: false,
+                    images: []
+                };
+            }
+            
+            // 模拟AI正在搜索相关图片
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            let response = `
+                <strong>🏛️ ${battleName} - 详细分析</strong><br><br>
+                
+                <strong>📅 基本信息：</strong><br>
+                • 时间：${battleInfo.year > 0 ? battleInfo.year + '年' : '前' + Math.abs(battleInfo.year) + '年'}<br>
+                • 地点：${battleInfo.location}<br>
+                • 参战双方：${battleInfo.participants}<br><br>
+                
+                <strong>📖 历史背景：</strong><br>
+                ${battleInfo.description}<br><br>
+                
+                <strong>⚔️ 战术分析：</strong><br>
+            `;
+            
+            // 根据不同战役添加具体战术分析
+            switch (battleName) {
+                case '赤壁之战':
+                    response += `
+                        • 🔥 火攻战术的经典运用<br>
+                        • ⚓ 连环船的利弊分析<br>
+                        • 🌪️ 东南风向对战役的影响<br>
+                        • 👥 孙刘联军协调作战的策略<br><br>
+                        
+                        <strong>🎯 关键转折：</strong><br>
+                        东南风的突然出现为火攻提供了条件，这是孙刘联军胜利的关键因素。周瑜和诸葛亮的天文知识，以及黄盖的苦肉计，共同促成了这场决定性的胜利。
+                    `;
+                    break;
+                    
+                case '马拉松战役':
+                    response += `
+                        • 🛡️ 重装步兵方阵的战术优势<br>
+                        • 🏹 波斯弓箭手vs希腊盾牌的对抗<br>
+                        • 💪 希腊人的勇敢精神与训练<br>
+                        • ⛰️ 地形对希腊有利的分析<br><br>
+                        
+                        <strong>🎯 关键转折：</strong><br>
+                        希腊重装步兵的盾牌方阵在近战中充分发挥优势，而波斯人在失去远距离优势后陷入被动。
+                    `;
+                    break;
+                    
+                case '黑斯廷斯战役':
+                    response += `
+                        • 🐎 诺曼骑兵的冲击力<br>
+                        • 🏰 盎格鲁-撒克逊盾牌墙的坚固性<br>
+                        • 🏹 诺曼弓箭手的远程打击<br>
+                        • ⚔️ 哈罗德战死对战役的影响<br><br>
+                        
+                        <strong>🎯 关键转折：</strong><br>
+                        哈罗德国王在战斗中的阵亡使得盎格鲁-撒克逊军队失去指挥，最终导致了英格兰的征服。
+                    `;
+                    break;
+                    
+                case '滑铁卢战役':
+                    response += `
+                        • 💣 拿破仑的炮兵优势<br>
+                        • 🛡️ 反法同盟的坚固防御<br>
+                        • 🚩 普鲁士援军的重要性<br>
+                        • ⛰️ 地形对防御方的有利影响<br><br>
+                        
+                        <strong>🎯 关键转折：</strong><br>
+                        布吕歇尔将军的普鲁士援军的及时到达，成为击败拿破仑的决定性因素。
+                    `;
+                    break;
+                    
+                case '葛底斯堡战役':
+                    response += `
+                        • 🐎 骑兵侦察与情报优势<br>
+                        • ⛰️ 高地防御战术<br>
+                        • ⚔️ 进攻方与防御方的地形选择<br>
+                        • 📅 连续三天的激烈争夺<br><br>
+                        
+                        <strong>🎯 关键转折：</strong><br>
+                        南方军皮克特的"进军葛底斯堡"行动失败，标志着南方军队的转折点。
+                    `;
+                    break;
+            }
+            
+            response += `<br><br>💡 想要观看这场战役的3D重现吗？点击下方的按钮即可开始！`;
+            
+            // 自动搜索相关历史军事图片
+            const images = await searchBattleImages(battleName);
+            
+            return {
+                content: response,
+                isBattle: true,
+                battleName: battleName,
+                images: images
+            };
+        }
+        
+        // 搜索战役相关图片 - 使用更相关的军事历史图片
+        async function searchBattleImages(battleName) {
+            // 模拟图片搜索延迟
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            // 根据不同战役使用相关的历史图片
+            const battleImageMap = {
+                '赤壁之战': [
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '🏛️ 长江赤壁地形图 - 三国时期著名水战地点',
+                        category: 'terrain'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=250&fit=crop',
+                        caption: '⚔️ 三国战船和兵器 - 古代水战装备',
+                        category: 'troops'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '🔥 火攻战术示意图 - 赤壁之战关键战术',
+                        category: 'tactics'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5a?w=400&h=250&fit=crop',
+                        caption: '🏛️ 三国历史文物 - 古代青铜兵器和钱币',
+                        category: 'artifacts'
+                    }
+                ],
+                '马拉松战役': [
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '🗺️ 希腊马拉松平原地形 - 希波战争主战场',
+                        category: 'terrain'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=250&fit=crop',
+                        caption: '⚔️ 希腊重装步兵 - 古典希腊军事力量',
+                        category: 'troops'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '📋 盾牌方阵战术 - 希腊军事战术经典',
+                        category: 'tactics'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5a?w=400&h=250&fit=crop',
+                        caption: '🏛️ 古希腊文物 - 青铜盾牌和长矛',
+                        category: 'artifacts'
+                    }
+                ],
+                '滑铁卢战役': [
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '🗺️ 比利时滑铁卢平原 - 拿破仑最后战场',
+                        category: 'terrain'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=250&fit=crop',
+                        caption: '⚔️ 拿破仑帝国军 - 19世纪欧洲军队',
+                        category: 'troops'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '💣 大炮阵地战术 - 拿破仑时代炮兵',
+                        category: 'tactics'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5a?w=400&h=250&fit=crop',
+                        caption: '🏛️ 拿破仑时代文物 - 帝国勋章和武器',
+                        category: 'artifacts'
+                    }
+                ],
+                '黑斯廷斯战役': [
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '🗺️ 英国黑斯廷斯战场 - 诺曼征服决定地',
+                        category: 'terrain'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=250&fit=crop',
+                        caption: '⚔️ 诺曼骑士 - 中世纪重装骑兵',
+                        category: 'troops'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '🏰 盾牌墙防御 - 中世纪军事战术',
+                        category: 'tactics'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5a?w=400&h=250&fit=crop',
+                        caption: '🏛️ 中世纪文物 - 骑士盔甲和长剑',
+                        category: 'artifacts'
+                    }
+                ],
+                '葛底斯堡战役': [
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '🗺️ 美国葛底斯堡战场 - 内战转折点',
+                        category: 'terrain'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=250&fit=crop',
+                        caption: '⚔️ 美国内战军队 - 19世纪步兵和骑兵',
+                        category: 'troops'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                        caption: '🔫 步枪方阵战术 - 美国内战军事技术',
+                        category: 'tactics'
+                    },
+                    {
+                        url: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5a?w=400&h=250&fit=crop',
+                        caption: '🏛️ 内战文物 - 南北战争勋章和武器',
+                        category: 'artifacts'
+                    }
+                ]
+            };
+            
+            // 返回对应的战役图片，如果没有找到则返回通用图片
+            return battleImageMap[battleName] || [
+                {
+                    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                    caption: `🗺️ ${battleName}战场地形图`,
+                    category: 'terrain'
+                },
+                {
+                    url: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=250&fit=crop',
+                    caption: `⚔️ ${battleName}参战军队`,
+                    category: 'troops'
+                },
+                {
+                    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop',
+                    caption: `📋 ${battleName}战术分析`,
+                    category: 'tactics'
+                },
+                {
+                    url: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5a?w=400&h=250&fit=crop',
+                    caption: `🏛️ ${battleName}历史文物`,
+                    category: 'artifacts'
+                }
+            ];
+        }
+        
+        // 简单的哈希函数
+        function hashCode(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return hash;
+        }
+        
+        // 生成通用回复
+        function generateGeneralResponse(message) {
+            return {
+                content: `关于"${message}"这个问题，我需要更具体的信息才能为您提供准确的回答。请您：<br><br>
+                
+                1. 🏛️ 指定具体的战役名称（如：赤壁之战、滑铁卢战役等）<br>
+                2. ⚔️ 询问特定的军事策略或战术<br>
+                3. 📚 了解某个历史时期的军事特点<br><br>
+                
+                我将根据您的具体问题提供详细的军事历史分析和相关图片资料。`,
+                isBattle: false,
+                images: []
+            };
+        }
+        
+        // 添加消息到DOM
+        function addMessageToDOM(content, type) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const avatarIcon = type === 'user' ? '👤' : '🤖';
+            const messageContent = type === 'thinking' 
+                ? `<div class="loading-indicator">
+                     <span>${content}</span>
+                     <div class="loading-dots">
+                       <div class="loading-dot"></div>
+                       <div class="loading-dot"></div>
+                       <div class="loading-dot"></div>
+                     </div>
+                   </div>`
+                : content;
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatarIcon}</div>
+                <div class="message-content">${messageContent}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv.querySelector('.message-content');
+        }
+        
+        // 显示图片
+        function displayImages(images, container) {
+            images.forEach(image => {
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'message-image';
+                imageDiv.innerHTML = `
+                    <img src="${image.url}" alt="${image.caption}" loading="lazy">
+                    <div class="image-caption">${image.caption}</div>
+                `;
+                container.appendChild(imageDiv);
+            });
+        }
+        
+        // 显示可视化按钮
+        function showVisualizationButton(battleName, container) {
+            const button = document.createElement('button');
+            button.className = 'visualization-button';
+            button.innerHTML = '🎮 开启3D战役重现';
+            button.onclick = () => openVisualization(battleName);
+            container.appendChild(button);
+        }
+        
+        // 打开可视化页面
+        function openVisualization(battleName) {
+            // 保存当前对话到历史
+            const currentChat = chatHistory.find(chat => chat.id === currentChatId);
+            if (currentChat) {
+                currentChat.title = currentChat.messages && currentChat.messages.length > 0 
+                    ? currentChat.messages[0].content.substring(0, 30) + '...'
+                    : battleName;
+                currentChat.timestamp = Date.now();
+                saveChatHistory();
+            }
+            
+            // 获取战役ID
+            const battleMap = {
+                '赤壁之战': 'chibi_208',
+                '马拉松战役': 'marathon_490bc',
+                '黑斯廷斯战役': 'hastings_1066',
+                '滑铁卢战役': 'waterloo_1815',
+                '葛底斯堡战役': 'gettysburg_1863'
+            };
+            
+            const battleId = battleMap[battleName];
+            if (battleId) {
+                window.open(`battle-visualization-deepseek.html?battle=${encodeURIComponent(battleName)}&id=${battleId}`, '_blank');
+            } else {
+                alert('抱歉，暂不支持该战役的3D重现功能。');
+            }
+        }
+        
+        // 保存消息到历史
+        function saveMessageToHistory(content, type) {
+            let currentChat = chatHistory.find(chat => chat.id === currentChatId);
+            
+            if (!currentChat) {
+                currentChat = {
+                    id: currentChatId,
+                    title: '',
+                    timestamp: Date.now(),
+                    messages: []
+                };
+                chatHistory.unshift(currentChat);
+            }
+            
+            currentChat.messages.push({
+                content: content,
+                type: type,
+                timestamp: Date.now()
+            });
+            
+            // 限制历史记录数量
+            if (chatHistory.length > 50) {
+                chatHistory = chatHistory.slice(0, 50);
+            }
+            
+            saveChatHistory();
+            loadChatHistory();
+        }
+    </script>
+</body>
+</html>

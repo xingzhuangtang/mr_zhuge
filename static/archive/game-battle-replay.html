@@ -1,0 +1,3048 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>全面战争风格 · 历史战役可视化</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: "Microsoft YaHei", sans-serif;
+            background: #0a0a0a;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #cesiumContainer {
+            position: absolute;
+            top: 5%;
+            left: 5%;
+            width: 65%;
+            height: 75%;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(2px);
+        }
+        
+        /* 播放时动画窗口最大化 */
+        #cesiumContainer.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 5000;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        
+        /* 新布局：右侧控制面板 */
+        .game-ui {
+            position: absolute;
+            top: 5%;
+            right: 3%;
+            width: 280px;
+            height: 85%;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            color: rgba(255, 255, 255, 0.95);
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        
+        /* 播放时面板半透明 */
+        .game-ui.minimized {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            opacity: 0.8;
+        }
+        
+        .game-ui.minimized:hover {
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            opacity: 1;
+        }
+        
+        .battle-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            margin-bottom: 16px;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+            padding-bottom: 8px;
+            text-align: center;
+        }
+        
+        .controls-section {
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .controls-title {
+            font-size: 14px;
+            color: #87ceeb;
+            margin-bottom: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .control-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 3px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(255, 107, 107, 0.4);
+            width: calc(50% - 6px);
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.6);
+        }
+        
+        .control-btn:active {
+            transform: translateY(0);
+        }
+        
+        .control-btn.playing {
+            background: linear-gradient(45deg, #10ac84, #00d2d3);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* 右侧上方面板：兵种信息 */
+        .units-panel {
+            position: absolute;
+            top: 5%;
+            left: 72%;
+            width: 25%;
+            max-height: 25%;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #4a90e2;
+            border-radius: 12px;
+            padding: 16px;
+            color: white;
+            z-index: 900;
+            overflow-y: auto;
+            font-family: 'Arial', sans-serif;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+        }
+        
+        .unit-category {
+            margin-bottom: 12px;
+            border: 1px solid rgba(74, 144, 226, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            background: rgba(74, 144, 226, 0.1);
+        }
+        
+        .category-title {
+            font-size: 14px;
+            color: #4a90e2;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #4a90e2;
+            padding-bottom: 4px;
+        }
+        
+        .unit-item {
+            background: rgba(255, 255, 255, 0.1);
+            margin: 4px 0;
+            padding: 6px;
+            border-radius: 4px;
+            border-left: 3px solid #ffd700;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .unit-item:hover {
+            background: rgba(255, 215, 0, 0.2);
+            transform: translateX(3px);
+        }
+        
+        /* 右侧下方面板：战术信息 */
+        .tactics-panel {
+            position: absolute;
+            top: 32%;
+            left: 72%;
+            width: 25%;
+            height: 35%;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #ff6b6b;
+            border-radius: 12px;
+            padding: 16px;
+            color: white;
+            z-index: 800;
+            font-family: 'Arial', sans-serif;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+        }
+        
+        /* 右侧最下方：当前状态 */
+        .current-status {
+            position: absolute;
+            top: 69%;
+            left: 72%;
+            width: 25%;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #10ac84;
+            border-radius: 12px;
+            padding: 16px;
+            color: white;
+            z-index: 700;
+            font-family: 'Arial Black', sans-serif;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+        }
+        
+        .status-title {
+            font-size: 16px;
+            color: #10ac84;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .status-content {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        /* 最小化播放控制条 */
+        .mini-control-bar {
+            position: absolute;
+            bottom: 5%;
+            left: 8%;
+            transform: translateX(-50%);
+            z-index: 1200;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid rgba(255, 215, 0, 0.6);
+            border-radius: 30px;
+            padding: 12px 20px;
+            display: flex;
+            gap: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .mini-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            color: rgba(255, 255, 255, 0.95);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+        
+        .mini-btn:hover {
+            background: rgba(255, 215, 0, 0.3);
+            border-color: rgba(255, 215, 0, 0.8);
+            color: #fff;
+            transform: scale(1.1);
+        }
+        
+        .mini-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* AI聊天面板 - 左下角 */
+        .ai-chat-panel {
+            position: absolute;
+            bottom: 5%;
+            left: 3%;
+            width: 320px;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #9b59b6;
+            border-radius: 12px;
+            z-index: 1000;
+            display: none;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        /* AI聊天按钮 - 左下角 */
+        .ai-chat-float-btn {
+            position: absolute;
+            bottom: 5%;
+            left: 3%;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.6);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .ai-chat-float-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(155, 89, 182, 0.8);
+        }
+        
+        .ai-chat-float-btn.pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        /* AI聊天面板详细样式 */
+        .ai-chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            color: white;
+            cursor: pointer;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .ai-title {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .ai-toggle-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .ai-toggle-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .ai-chat-messages {
+            height: 200px;
+            overflow-y: auto;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .ai-message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 13px;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .ai-welcome {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            color: white;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .ai-user-message {
+            background: rgba(52, 152, 219, 0.8);
+            color: white;
+            margin-left: 20px;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .ai-assistant-message {
+            background: rgba(46, 204, 113, 0.8);
+            color: white;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .ai-thinking {
+            background: rgba(241, 196, 15, 0.8);
+            color: black;
+            border-bottom-left-radius: 5px;
+            font-style: italic;
+        }
+        
+        .ai-chat-input-container {
+            display: flex;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid #9b59b6;
+            border-radius: 0 0 10px 10px;
+        }
+        
+        .ai-chat-input-container input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #666;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        
+        .ai-chat-input-container input::placeholder {
+            color: #999;
+        }
+        
+        .ai-chat-input-container input:focus {
+            outline: none;
+            border-color: #9b59b6;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .ai-chat-input-container button {
+            padding: 8px 15px;
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-chat-input-container button:hover {
+            background: linear-gradient(45deg, #8e44ad, #9b59b6);
+            transform: translateY(-1px);
+        }
+        
+        .ai-chat-input-container button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* 聊天面板展开/收起动画 */
+        .ai-chat-panel.expanded {
+            display: block;
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* 教学面板 - 右上角 */
+        .educational-panel {
+            position: absolute;
+            top: 5%;
+            left: 35%;
+            width: 280px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #9b59b6;
+            border-radius: 12px;
+            padding: 16px;
+            color: white;
+            z-index: 800;
+            font-family: 'Arial', sans-serif;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        .educational-panel .control-btn {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            width: 100%;
+            margin: 8px 0;
+            font-size: 12px;
+            padding: 8px 12px;
+        }
+        
+        .educational-panel .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(155, 89, 182, 0.6);
+        }
+        
+        #tacticalExplanation {
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            color: #ecf0f1;
+        }
+        
+        /* 性能监控面板 */
+        .performance-panel {
+            position: absolute;
+            top: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #e74c3c;
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: #e74c3c;
+            z-index: 1500;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            min-width: 200px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
+        }
+        
+        /* 单位高亮效果 */
+        .unit-highlighted {
+            background: rgba(255, 215, 0, 0.3) !important;
+            border-left: 5px solid #ffd700 !important;
+            animation: highlight-pulse 2s infinite;
+        }
+        
+        @keyframes highlight-pulse {
+            0%, 100% { transform: translateX(3px); }
+            50% { transform: translateX(8px); }
+        }
+        
+        /* 状态指示器 */
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-active {
+            background-color: #27ae60;
+            box-shadow: 0 0 5px #27ae60;
+        }
+        
+        .status-inactive {
+            background-color: #e74c3c;
+            box-shadow: 0 0 5px #e74c3c;
+        }
+        
+        .status-warning {
+            background-color: #f39c12;
+            box-shadow: 0 0 5px #f39c12;
+        }
+        
+        /* 面板隐藏动画 */
+        @keyframes slideOutLeft {
+            0% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(-100%); opacity: 0; }
+        }
+        
+        @keyframes slideInLeft {
+            0% { transform: translateX(-100%); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        
+        .panel-slide-out {
+            animation: slideOutLeft 0.5s ease forwards;
+        }
+        
+        .panel-slide-in {
+            animation: slideInLeft 0.5s ease forwards;
+        }
+        
+        /* 播放模式样式 */
+        .play-mode .game-ui {
+            opacity: 0.3;
+            transform: translateX(20px);
+        }
+        
+        .play-mode .units-panel,
+        .play-mode .tactics-panel,
+        .play-mode .current-status,
+        .play-mode .educational-panel {
+            opacity: 0.1;
+            transform: scale(0.9);
+        }
+        
+        .play-mode #cesiumContainer {
+            border-color: rgba(255, 215, 0, 0.6);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+        
+        /* 载入动画 */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            transition: opacity 1s ease;
+        }
+        
+        .loading-content {
+            text-align: center;
+            color: #ffd700;
+            font-family: 'Arial Black', sans-serif;
+        }
+        
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 6px solid rgba(255, 215, 0, 0.2);
+            border-top: 6px solid #ffd700;
+            border-radius: 50%;
+            animation: spin 1.5s linear infinite;
+            margin: 0 auto 24px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 战役选择器 */
+        .battle-selector {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #ffd700;
+            border-radius: 20px;
+            padding: 40px;
+            color: white;
+            z-index: 2000;
+            text-align: center;
+            font-family: 'Arial Black', sans-serif;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            max-width: 500px;
+        }
+        
+        .battle-option {
+            background: linear-gradient(45deg, #4a90e2, #357abd);
+            color: white;
+            border: none;
+            padding: 16px 28px;
+            margin: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            width: 100%;
+            display: block;
+            text-align: left;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+        }
+        
+        .battle-option:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(74, 144, 226, 0.6);
+            background: linear-gradient(45deg, #5ba0e2, #457abd);
+        }
+        
+        .battle-option.selected {
+            background: linear-gradient(45deg, #10ac84, #00d2d3);
+            animation: selected-pulse 2s infinite;
+            box-shadow: 0 8px 25px rgba(16, 172, 132, 0.4);
+        }
+        
+        @keyframes selected-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 1200px) {
+            #cesiumContainer {
+                width: 60%;
+                height: 70%;
+                top: 8%;
+                left: 8%;
+            }
+            
+            .game-ui {
+                width: 30%;
+                right: 2%;
+            }
+            
+            .units-panel,
+            .tactics-panel,
+            .current-status {
+                left: 68%;
+                width: 28%;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            #cesiumContainer {
+                position: relative;
+                top: auto;
+                left: auto;
+                width: 100%;
+                height: 40vh;
+                border: none;
+                border-radius: 0;
+                order: 1;
+            }
+            
+            .game-ui {
+                position: relative;
+                top: auto;
+                right: auto;
+                width: 100%;
+                height: auto;
+                order: 2;
+                margin: 10px;
+            }
+            
+            .units-panel,
+            .tactics-panel,
+            .current-status,
+            .educational-panel {
+                position: relative;
+                top: auto;
+                left: auto;
+                width: 100%;
+                height: 200px;
+                margin: 10px;
+                order: 3;
+            }
+            
+            .ai-chat-panel,
+            .ai-chat-float-btn {
+                position: fixed;
+                bottom: 10px;
+                left: 10px;
+                width: calc(100% - 20px);
+            }
+            
+            .mini-control-bar {
+                bottom: 220px;
+                left: 50%;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .battle-selector {
+                width: 95%;
+                padding: 20px;
+            }
+            
+            .battle-option {
+                font-size: 12px;
+                padding: 12px 20px;
+            }
+            
+            .control-btn {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- 载入画面 -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <h2>全面战争风格 · 历史战役可视化</h2>
+                <p>正在加载战役数据...</p>
+            </div>
+        </div>
+        
+        <!-- 战役选择器 -->
+        <div class="battle-selector" id="battleSelector">
+            <h2 style="color: #ffd700; margin-bottom: 24px; font-size: 24px;">选择历史战役</h2>
+            <button class="battle-option" data-battle="chibi_208">
+                <strong>🏛️ 赤壁之战 (208年)</strong><br>
+                <small>三国时期 · 水战经典</small>
+            </button>
+            <button class="battle-option" data-battle="marathon_490bc">
+                <strong>⚔️ 马拉松战役 (前490年)</strong><br>
+                <small>古希腊 · 重装步兵对抗</small>
+            </button>
+            <button class="battle-option" data-battle="hastings_1066">
+                <strong>🏰 黑斯廷斯战役 (1066年)</strong><br>
+                <small>中世纪 · 诺曼征服</small>
+            </button>
+            <button class="battle-option" data-battle="waterloo_1815">
+                <strong>💣 滑铁卢战役 (1815年)</strong><br>
+                <small>拿破仑时代 · 决战</small>
+            </button>
+            <button class="battle-option" data-battle="gettysburg_1863">
+                <strong>🔫 葛底斯堡战役 (1863年)</strong><br>
+                <small>美国内战 · 现代战争</small>
+            </button>
+        </div>
+        
+        <!-- 3D动画窗口 - 中部偏左 -->
+        <div id="cesiumContainer"></div>
+        
+        <!-- 右侧主要控制面板 -->
+        <div class="game-ui" id="mainControlPanel">
+            <div class="battle-title" id="battleTitle">⚔️ 战役可视化</div>
+            
+            <div class="controls-section">
+                <div class="controls-title">🎮 播放控制</div>
+                <button class="control-btn" id="playBtn">▶ 播放</button>
+                <button class="control-btn" id="pauseBtn">⏸ 暂停</button>
+                <button class="control-btn" id="resetBtn">↺ 重置</button>
+                <button class="control-btn" id="speedBtn">🚀 倍速</button>
+            </div>
+            
+            <div class="controls-section">
+                <div class="controls-title">🎯 观察模式</div>
+                <button class="control-btn" id="overviewBtn">📋 全景</button>
+                <button class="control-btn" id="tacticalBtn">⚔️ 战术</button>
+                <button class="control-btn" id="aerialBtn">✈️ 空中</button>
+                <button class="control-btn" id="fullscreenBtn">⛶ 全屏</button>
+            </div>
+            
+            <div class="controls-section">
+                <div class="controls-title">🎨 视觉效果</div>
+                <button class="control-btn" id="effectsBtn">✨ 特效</button>
+                <button class="control-btn" id="weatherBtn">🌦️ 天气</button>
+            </div>
+            
+            <div class="controls-section">
+                <div class="controls-title">🎵 音效控制</div>
+                <button class="control-btn" id="audioBtn">🔊 音效</button>
+                <button class="control-btn" id="teachingBtn">📚 教学</button>
+            </div>
+        </div>
+        
+        <!-- 右上：兵种信息面板 -->
+        <div class="units-panel">
+            <div class="controls-title">🛡️ 兵种信息</div>
+            <div id="unitsInfo">选择战役查看兵种详情</div>
+        </div>
+        
+        <!-- 右中：战术信息面板 -->
+        <div class="tactics-panel">
+            <div class="controls-title">📚 战术解析</div>
+            <div id="tacticsInfo">等待战役开始...</div>
+        </div>
+        
+        <!-- 右下：当前状态面板 -->
+        <div class="current-status">
+            <div class="status-title">⚡ 当前状态</div>
+            <div class="status-content" id="currentStatus">
+                准备就绪<br>
+                请选择战役开始
+            </div>
+        </div>
+        
+        <!-- 右上：教学面板 -->
+        <div class="educational-panel" id="educationalPanel">
+            <div class="controls-title">📚 战术教学</div>
+            <div id="tacticalExplanation">等待战役开始...</div>
+            <button class="control-btn" onclick="nextTacticalStep()">下一步</button>
+        </div>
+        
+        <!-- 左下：AI聊天按钮 -->
+        <button class="ai-chat-float-btn pulse" id="aiChatFloatBtn">💬</button>
+        
+        <!-- 左下：AI聊天面板 -->
+        <div class="ai-chat-panel" id="aiChatPanel">
+            <div class="ai-chat-header">
+                <div class="ai-title">🤖 战役AI助手</div>
+                <button class="ai-toggle-btn" id="aiToggleBtn">❌</button>
+            </div>
+            <div class="ai-chat-messages" id="aiChatMessages">
+                <div class="ai-message ai-welcome">
+                    您好！我是您的战役AI助手。正在为您讲解历史战役，询问任何关于战术、兵种或历史背景的问题吧！
+                </div>
+            </div>
+            <div class="ai-chat-input-container">
+                <input type="text" id="aiChatInput" placeholder="询问关于战役的问题..." />
+                <button id="aiChatSendBtn">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载Cesium库 -->
+    <script src="cesium/Cesium.js"></script>
+    <!-- 加载兵种系统 -->
+    <script src="js/unit-system.js"></script>
+    <!-- 加载各种游戏化系统 -->
+    <script src="js/formation-animations.js"></script>
+    <script src="js/tactical-animations.js"></script>
+    <script src="js/enhanced-terrain.js"></script>
+    <script src="js/large-scale-rendering.js"></script>
+    <script src="js/weather-environment.js"></script>
+    <script src="js/audio-system.js"></script>
+    <script src="js/educational-system.js"></script>
+    
+    <script>
+        // 全局变量
+        let viewer;
+        let currentBattleData = null;
+        let isPlaying = false;
+        let currentSpeed = 1;
+        let processedEvents = new Set();
+        let battleArmies = {};
+        let animationTime = 0;
+        let effectsEnabled = true;
+        let weatherEnabled = true;
+        let audioEnabled = true;
+        let teachingModeEnabled = false;
+        let selectedUnits = new Set();
+        let battleAnalysis = null;
+        let terrainSystem = null;
+        let audioSystem = null;
+        let performanceMonitor = null;
+        let aiChatVisible = false;
+        let chatMessageHistory = [];
+        let aiSystem = null;
+        let formationSystem = null;
+        
+        // 战役数据存储
+        const battlesDatabase = {
+            "chibi_208": {
+                name: "赤壁之战",
+                period: "ancient",
+                year: 208,
+                units: {
+                    "cao_cao": ["legionnaire", "archer", "heavy_cavalry"],
+                    "sun_liu": ["hoplite", "archer", "horse_archer"]
+                },
+                tactics: ["fire_attack", "alliance_warfare", "naval_supremacy"]
+            },
+            "marathon_490bc": {
+                name: "马拉松战役",
+                period: "ancient", 
+                year: -490,
+                units: {
+                    "persian_empire": ["archer", "legionnaire", "heavy_cavalry"],
+                    "greek_city_states": ["hoplite", "peltast"]
+                },
+                tactics: ["phalanx_charge", "archer_volley"]
+            },
+            "hastings_1066": {
+                name: "黑斯廷斯战役",
+                period: "medieval",
+                year: 1066,
+                units: {
+                    "anglo_saxons": ["knight", "man_at_arms", "peasant_militia"],
+                    "normans": ["knight", "man_at_arms", "crossbowman"]
+                },
+                tactics: ["shield_wall", "cavalry_assault", "feigned_retreat"]
+            },
+            "waterloo_1815": {
+                name: "滑铁卢战役",
+                period: "modern",
+                year: 1815,
+                units: {
+                    "napoleonic_army": ["line_infantry", "cavalry", "field_artillery"],
+                    "coalition_army": ["line_infantry", "cavalry", "field_artillery"]
+                },
+                tactics: ["grand_tactics", "defensive_position"]
+            },
+            "gettysburg_1863": {
+                name: "葛底斯堡战役",
+                period: "modern",
+                year: 1863,
+                units: {
+                    "confederate_army": ["line_infantry", "cavalry", "field_artillery"],
+                    "union_army": ["line_infantry", "cavalry", "field_artillery"]
+                },
+                tactics: ["offensive_operations", "defensive_positioning"]
+            }
+        };
+
+        // 初始化系统
+        async function initializeSystem() {
+            console.log("🚀 初始化全面战争风格战役可视化系统...");
+            
+            // 显示载入动画
+            showLoading();
+            
+            try {
+                // 初始化Cesium
+                await initializeCesium();
+                
+                // 载入战役数据
+                await loadBattleData();
+                
+                // 隐藏载入动画
+                hideLoading();
+                
+                console.log("✅ 系统初始化完成");
+                
+                // 初始化性能监控
+                initializePerformanceMonitor();
+                
+            } catch (error) {
+                console.error("❌ 系统初始化失败:", error);
+                updateStatus("系统初始化失败，正在尝试备用方案...");
+                
+                // 尝试备用初始化方案
+                fallbackInitialization();
+            }
+        }
+        
+        // 初始化性能监控
+        function initializePerformanceMonitor() {
+            if (window.PerformanceMonitor) {
+                performanceMonitor = new window.PerformanceMonitor();
+                if (typeof performanceMonitor.startMonitoring === 'function') {
+                    performanceMonitor.startMonitoring();
+                }
+                
+                // 显示性能面板
+                showPerformancePanel();
+            } else {
+                console.log("📊 性能监控模块未找到，跳过性能监控初始化");
+            }
+        }
+        
+        // 显示性能面板
+        function showPerformancePanel() {
+            const panel = document.createElement('div');
+            panel.className = 'performance-panel';
+            panel.id = 'performancePanel';
+            panel.innerHTML = `
+                <div><span class="status-indicator" id="fpsIndicator"></span>FPS: <span id="fpsValue">60</span></div>
+                <div><span class="status-indicator" id="memoryIndicator"></span>内存: <span id="memoryValue">0 MB</span></div>
+                <div><span class="status-indicator" id="entitiesIndicator"></span>实体: <span id="entitiesValue">0</span></div>
+            `;
+            document.getElementById('gameContainer').appendChild(panel);
+            
+            // 定期更新性能数据
+            setInterval(updatePerformanceDisplay, 1000);
+        }
+        
+        // 更新性能显示
+        function updatePerformanceDisplay() {
+            if (performanceMonitor && performanceMonitor.getFPS) {
+                const fps = performanceMonitor.getFPS();
+                const memory = performanceMonitor.getMemoryUsage();
+                const entities = viewer.entities.values.length;
+                
+                document.getElementById('fpsValue').textContent = Math.round(fps);
+                document.getElementById('memoryValue').textContent = memory.toFixed(1) + ' MB';
+                document.getElementById('entitiesValue').textContent = entities;
+                
+                // 更新状态指示器
+                updateStatusIndicators(fps, memory, entities);
+            }
+        }
+        
+        // 更新状态指示器
+        function updateStatusIndicators(fps, memory, entities) {
+            const fpsIndicator = document.getElementById('fpsIndicator');
+            const memoryIndicator = document.getElementById('memoryIndicator');
+            const entitiesIndicator = document.getElementById('entitiesIndicator');
+            
+            // FPS指示器
+            if (fps >= 30) {
+                fpsIndicator.className = 'status-indicator status-active';
+            } else if (fps >= 15) {
+                fpsIndicator.className = 'status-indicator status-warning';
+            } else {
+                fpsIndicator.className = 'status-indicator status-inactive';
+            }
+            
+            // 内存指示器
+            if (memory < 100) {
+                memoryIndicator.className = 'status-indicator status-active';
+            } else if (memory < 300) {
+                memoryIndicator.className = 'status-indicator status-warning';
+            } else {
+                memoryIndicator.className = 'status-indicator status-inactive';
+            }
+            
+            // 实体数量指示器
+            if (entities < 1000) {
+                entitiesIndicator.className = 'status-indicator status-active';
+            } else if (entities < 5000) {
+                entitiesIndicator.className = 'status-indicator status-warning';
+            } else {
+                entitiesIndicator.className = 'status-indicator status-inactive';
+            }
+        }
+        
+        // 备用初始化方案
+        function fallbackInitialization() {
+            console.log("🔄 启动备用初始化方案...");
+            
+            try {
+                // 使用简化版Cesium配置
+                viewer = new Cesium.Viewer('cesiumContainer', {
+                    terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+                    shouldAnimate: false,
+                    infoBox: false,
+                    selectionIndicator: false,
+                    baseLayerPicker: false,
+                    navigationHelpButton: false
+                });
+                
+                // 简化渲染优化
+                viewer.scene.highDynamicRange = false;
+                viewer.scene.globe.enableLighting = false;
+                
+                hideLoading();
+                updateStatus("使用备用模式，部分功能受限");
+                
+            } catch (error) {
+                console.error("备用初始化也失败:", error);
+                updateStatus("系统完全无法初始化，请检查网络连接");
+            }
+        }
+        
+        // 初始化Cesium
+        function initializeCesium() {
+            return new Promise((resolve, reject) => {
+                try {
+                    // 配置多个地图源作为备选
+                    const imageryProviders = [
+                        // 主要：OpenStreetMap
+                        new Cesium.OpenStreetMapImageryProvider({
+                            url: 'https://tile.openstreetmap.org/'
+                        }),
+                        // 备选1：CartoDB
+                        new Cesium.CartoDBImageryProvider({
+                            url: 'https://tile.cartocdn.com/'
+                        }),
+                        // 备选2：ESRI World Imagery
+                        new Cesium.ArcGisMapServerImageryProvider({
+                            url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+                        })
+                    ];
+
+                    // 配置地形提供器
+                    const terrainProviders = [
+                        // 主要：Cesium World Terrain
+                        new Cesium.CesiumTerrainProvider({
+                            url: 'https://assets.cesium.com/1/terrain/',
+                            requestVertexNormals: true,
+                            requestWaterMask: true
+                        }),
+                        // 备选：Ellipsoid Terrain
+                        new Cesium.EllipsoidTerrainProvider()
+                    ];
+
+                    viewer = new Cesium.Viewer('cesiumContainer', {
+                        terrainProvider: terrainProviders[0],
+                        imageryProvider: imageryProviders[0],
+                        shouldAnimate: true, // 启用动画
+                        infoBox: false,
+                        selectionIndicator: false,
+                        baseLayerPicker: true, // 启用图层选择器
+                        navigationHelpButton: true,
+                        animation: true, // 启用时间轴
+                        timeline: true,  // 启用时间轴
+                        sceneModePicker: true,
+                        requestRenderMode: false,
+                        maximumRenderTimeChange: Infinity,
+                        homeButton: true,
+                        sceneMode: Cesium.SceneMode.SCENE3D,
+                        baseLayerPickerViewModels: [
+                            {
+                                name: 'OpenStreetMap',
+                                iconUrl: 'https://cesium.com/docs/images/imageryProviders/openStreetMap.png',
+                                tooltip: 'OpenStreetMap',
+                                creationFunction: function() {
+                                    return imageryProviders[0];
+                                }
+                            },
+                            {
+                                name: 'CartoDB',
+                                iconUrl: 'https://cesium.com/docs/images/imageryProviders/cartodb.png',
+                                tooltip: 'CartoDB',
+                                creationFunction: function() {
+                                    return imageryProviders[1];
+                                }
+                            }
+                        ]
+                    });
+                    
+                    // 优化场景设置
+                    viewer.scene.highDynamicRange = false;
+                    viewer.scene.globe.enableLighting = true;
+                    viewer.scene.skyAtmosphere.show = true;
+                    
+                    // 设置时钟
+                    viewer.clock.shouldAnimate = true;
+                    viewer.clock.multiplier = 1.0;
+                    
+                    // 添加错误处理
+                    viewer.imageryLayers.layerAdded.addEventListener(function(layer) {
+                        console.log("地图图层已添加:", layer);
+                    });
+                    
+                    viewer.imageryLayers.layerRemoved.addEventListener(function(layer) {
+                        console.log("地图图层已移除:", layer);
+                    });
+                    
+                    viewer.imageryLayers.layerMoved.addEventListener(function(index, layer) {
+                        console.log("地图图层已移动:", index, layer);
+                    });
+                    
+                    console.log("✅ Cesium初始化成功");
+                    resolve();
+                    
+                } catch (error) {
+                    console.error("Cesium初始化失败:", error);
+                    // 尝试使用最简配置
+                    try {
+                        viewer = new Cesium.Viewer('cesiumContainer', {
+                            terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+                            imageryProvider: new Cesium.OpenStreetMapImageryProvider({
+                                url: 'https://tile.openstreetmap.org/'
+                            }),
+                            shouldAnimate: true,
+                            animation: true,
+                            timeline: true
+                        });
+                        console.log("✅ Cesium备用初始化成功");
+                        resolve();
+                    } catch (fallbackError) {
+                        console.error("Cesium备用初始化也失败:", fallbackError);
+                        reject(fallbackError);
+                    }
+                }
+            });
+        }
+        
+        // 载入战役数据
+        async function loadBattleData() {
+            try {
+                // 先尝试从主支知识库加载
+                const response = await fetch('/static/knowledge_base/military_data/historical_battles.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log("📚 战役数据加载成功:", data);
+                    window.battlesData = data;
+                } else {
+                    throw new Error("战役数据文件不存在");
+                }
+                
+            } catch (error) {
+                console.warn("📚 战役数据加载失败，使用默认数据:", error);
+                // 如果无法加载战役数据，使用嵌入式数据
+                window.battlesData = {
+                    battles: {
+                        ancient_battles: {
+                            chibi_208: {
+                                battle_id: "chibi_208",
+                                name: "赤壁之战",
+                                location: { lat: 29.7, lon: 113.9, terrain_type: "river_bank" },
+                                participants: [
+                                    {
+                                        force_id: "cao_cao",
+                                        name: "曹操军",
+                                        commander: "曹操",
+                                        composition: { infantry: 150000, cavalry: 30000, archers: 20000 },
+                                        initial_position: [113.88, 29.71]
+                                    },
+                                    {
+                                        force_id: "sun_liu",
+                                        name: "孙刘联军",
+                                        commander: "周瑜、刘备",
+                                        composition: { infantry: 30000, cavalry: 5000 },
+                                        initial_position: [113.92, 29.75]
+                                    }
+                                ],
+                                battle_timeline: [
+                                    {
+                                        event_id: "deployment",
+                                        timestamp: "208-12-01T00:00:00",
+                                        event_type: "deployment",
+                                        description: "曹操军队集结于长江北岸",
+                                        location: [113.88, 29.71],
+                                        participants: ["cao_cao"]
+                                    },
+                                    {
+                                        event_id: "fire_attack",
+                                        timestamp: "208-12-07T20:00:00",
+                                        event_type: "decisive_maneuver",
+                                        description: "东南风起，孙刘联军发起火攻",
+                                        location: [113.90, 29.73],
+                                        participants: ["sun_liu"],
+                                        effects: { fire: true, weather: "windy" }
+                                    },
+                                    {
+                                        event_id: "retreat",
+                                        timestamp: "208-12-08T10:00:00",
+                                        event_type: "retreat",
+                                        description: "曹操大败，开始全面撤退",
+                                        location: [113.80, 29.80],
+                                        participants: ["cao_cao"]
+                                    }
+                                ]
+                            }
+                        },
+                        medieval_battles: {
+                            hastings_1066: {
+                                battle_id: "hastings_1066",
+                                name: "黑斯廷斯战役",
+                                location: { lat: 50.9, lon: 0.5, terrain_type: "hill_plains" },
+                                participants: [
+                                    {
+                                        force_id: "anglo_saxons",
+                                        name: "盎格鲁-撒克逊军",
+                                        commander: "哈罗德二世",
+                                        initial_position: [0.51, 50.92]
+                                    },
+                                    {
+                                        force_id: "normans",
+                                        name: "诺曼军队",
+                                        commander: "威廉征服者",
+                                        initial_position: [0.49, 50.88]
+                                    }
+                                ]
+                            }
+                        },
+                        modern_battles: {
+                            waterloo_1815: {
+                                battle_id: "waterloo_1815",
+                                name: "滑铁卢战役",
+                                location: { lat: 50.68, lon: 4.41, terrain_type: "rolling_hills" },
+                                participants: [
+                                    {
+                                        force_id: "napoleonic_army",
+                                        name: "拿破仑帝国军",
+                                        commander: "拿破仑一世",
+                                        initial_position: [4.40, 50.67]
+                                    },
+                                    {
+                                        force_id: "coalition_army",
+                                        name: "第七次反法同盟军",
+                                        commander: "威灵顿公爵",
+                                        initial_position: [4.42, 50.69]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                };
+            }
+        }
+        
+        // 显示载入动画
+        function showLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = 'flex';
+        }
+        
+        // 隐藏载入动画
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 1000);
+            }, 2000);
+        }
+        
+        // 战役选择处理
+        function handleBattleSelection(battleId) {
+            console.log(`🎯 选择战役: ${battleId}`);
+            
+            // 高亮选中的战役
+            document.querySelectorAll('.battle-option').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            document.querySelector(`[data-battle="${battleId}"]`).classList.add('selected');
+            
+            // 获取战役数据
+            const battleData = getBattleData(battleId);
+            if (!battleData) {
+                console.error(`❌ 战役数据不存在: ${battleId}`);
+                updateStatus(`战役数据不存在: ${battleId}`);
+                return;
+            }
+            
+            // 设置当前战役
+            currentBattleData = battleData;
+            
+            // 更新界面
+            updateBattleTitle(battleId);
+            updateUnitsPanel(battleData);
+            updateTacticsPanel(battleData);
+            updateStatus(`已选择: ${battleData.name}，点击播放开始战役`);
+            
+            // 隐藏选择器，显示游戏界面
+            setTimeout(() => {
+                const selector = document.getElementById('battleSelector');
+                selector.style.display = 'none';
+                selector.style.visibility = 'hidden';
+                selector.style.opacity = '0';
+                flyToBattleLocation(battleData);
+            }, 1500);
+        }
+        
+        // 获取战役数据
+        function getBattleData(battleId) {
+            const data = window.battlesData;
+            if (!data || !data.battles) return null;
+            
+            // 搜索各个历史时期
+            for (const period in data.battles) {
+                if (data.battles[period][battleId]) {
+                    return data.battles[period][battleId];
+                }
+            }
+            
+            return null;
+        }
+        
+        // 飞到战役位置
+        function flyToBattleLocation(battleData) {
+            const location = battleData.location;
+            if (!location) return;
+            
+            const destination = Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 15000.0);
+            
+            viewer.camera.flyTo({
+                destination: destination,
+                duration: 3.0,
+                complete: function() {
+                    console.log("📍 已到达战役位置");
+                    // 开始自动播放
+                    startBattleAnimation();
+                }
+            });
+        }
+        
+        // 更新战役标题
+        function updateBattleTitle(battleId) {
+            const battleInfo = battlesDatabase[battleId];
+            if (battleInfo) {
+                const titleElement = document.getElementById('battleTitle');
+                titleElement.textContent = `⚔️ ${battleInfo.name} (${battleInfo.year > 0 ? battleInfo.year : '前' + Math.abs(battleInfo.year)}年)`;
+            }
+        }
+        
+        // 更新兵种面板
+        function updateUnitsPanel(battleData) {
+            const panel = document.getElementById('unitsInfo');
+            let html = '';
+            
+            battleData.participants.forEach(participant => {
+                const battleInfo = battlesDatabase[currentBattleData.battle_id];
+                const unitTypes = battleInfo.units[participant.force_id];
+                
+                html += `<div class="unit-category">`;
+                html += `<div class="category-title">${participant.name}</div>`;
+                html += `<div style="font-size: 11px; color: #ccc; margin-bottom: 5px;">指挥官: ${participant.commander}</div>`;
+                
+                unitTypes.forEach(unitType => {
+                    const unitInfo = getUnitInfo(unitType);
+                    if (unitInfo) {
+                        html += `<div class="unit-item">`;
+                        html += `<strong>${unitInfo.name}</strong><br>`;
+                        html += `<span style="color: #87ceeb;">攻击: ${unitInfo.tactical_properties.attack_power} | 防御: ${unitInfo.tactical_properties.defense_rating} | 机动: ${unitInfo.tactical_properties.speed}</span>`;
+                        html += `</div>`;
+                    }
+                });
+                
+                html += `</div>`;
+            });
+            
+            panel.innerHTML = html;
+        }
+        
+        // 更新战术面板
+        function updateTacticsPanel(battleId) {
+            const panel = document.getElementById('tacticsInfo');
+            const battleInfo = battlesDatabase[battleId];
+            
+            if (battleInfo && battleInfo.tactics) {
+                let html = '<strong>主要战术:</strong><br>';
+                battleInfo.tactics.forEach(tactic => {
+                    html += `• ${getTacticDescription(tactic)}<br>`;
+                });
+                panel.innerHTML = html;
+            }
+        }
+        
+        // 实时更新战术解析面板
+        function updateTacticsPanelWithEvent(event) {
+            const panel = document.getElementById('tacticsInfo');
+            if (!panel || !event) return;
+            
+            const eventTime = new Date().toLocaleTimeString('zh-CN');
+            const eventType = getEventTypeDisplayName(event.event_type);
+            const participants = event.participants ? event.participants.map(pid => getForceName(pid)).join('、') : '未知';
+            
+            let html = `<strong>当前战术事件 (${eventTime}):</strong><br>`;
+            html += `<div style="margin: 8px 0; padding: 8px; background: rgba(255, 215, 0, 0.1); border-left: 3px solid #ffd700; border-radius: 4px;">`;
+            html += `<strong>${eventType}</strong><br>`;
+            html += `<span style="color: #87ceeb;">${event.description}</span><br>`;
+            html += `<small style="color: #ccc;">参与方: ${participants}</small>`;
+            html += `</div>`;
+            
+            // 添加战术分析
+            if (event.event_type === 'decisive_maneuver') {
+                html += `<div style="margin-top: 8px; padding: 8px; background: rgba(255, 107, 107, 0.1); border-left: 3px solid #ff6b6b; border-radius: 4px;">`;
+                html += `<strong>⚡ 战术分析:</strong><br>`;
+                html += `<span style="color: #ff6b6b;">这是战役的转折点！${event.description}</span><br>`;
+                html += `<small>此类行动往往决定战役走向，需要密切关注其后果。</small>`;
+                html += `</div>`;
+            } else if (event.event_type === 'deployment') {
+                html += `<div style="margin-top: 8px; padding: 8px; background: rgba(16, 172, 132, 0.1); border-left: 3px solid #10ac84; border-radius: 4px;">`;
+                html += `<strong>📋 部署分析:</strong><br>`;
+                html += `<span style="color: #10ac84;">${event.description}</span><br>`;
+                html += `<small>良好的部署是胜利的基础，位置选择至关重要。</small>`;
+                html += `</div>`;
+            } else if (event.event_type === 'retreat') {
+                html += `<div style="margin-top: 8px; padding: 8px; background: rgba(255, 165, 0, 0.1); border-left: 3px solid #ffa500; border-radius: 4px;">`;
+                html += `<strong>🏃 撤退分析:</strong><br>`;
+                html += `<span style="color: #ffa500;">${event.description}</span><br>`;
+                html += `<small>有序撤退可以保存实力，为后续行动保留机会。</small>`;
+                html += `</div>`;
+            }
+            
+            // 保持原有的战术信息
+            if (currentBattleData) {
+                const battleInfo = battlesDatabase[currentBattleData.battle_id];
+                if (battleInfo && battleInfo.tactics) {
+                    html += `<div style="margin-top: 12px; border-top: 1px solid #444; padding-top: 8px;">`;
+                    html += `<strong>战役主要战术:</strong><br>`;
+                    battleInfo.tactics.forEach(tactic => {
+                        html += `• ${getTacticDescription(tactic)}<br>`;
+                    });
+                    html += `</div>`;
+                }
+            }
+            
+            panel.innerHTML = html;
+            
+            // 添加高亮动画效果
+            panel.style.animation = 'pulse 2s ease-in-out';
+            setTimeout(() => {
+                panel.style.animation = '';
+            }, 2000);
+        }
+        
+        // 获取事件类型显示名称
+        function getEventTypeDisplayName(eventType) {
+            const typeNames = {
+                'deployment': '📍 军队部署',
+                'decisive_maneuver': '⚡ 决定性行动',
+                'retreat': '🏃 战略撤退',
+                'assault': '⚔️ 主动攻击',
+                'skirmish': '🏹 小规模冲突',
+                'artillery_barrage': '💣 炮火压制',
+                'cavalry_charge': '🐎 骑兵冲锋'
+            };
+            return typeNames[eventType] || eventType;
+        }
+        
+        // 获取兵种信息
+        function getUnitInfo(unitType) {
+            // 在兵种系统中查找
+            const unitSystem = window.UnitSystem;
+            if (!unitSystem) return null;
+            
+            // 搜索各个时期的兵种
+            for (const period in unitSystem) {
+                if (unitSystem[period][unitType]) {
+                    return unitSystem[period][unitType];
+                }
+            }
+            
+            return null;
+        }
+        
+        // 获取战术描述
+        function getTacticDescription(tactic) {
+            const descriptions = {
+                "fire_attack": "火攻战术 - 利用天气和地形优势",
+                "phalanx_charge": "方阵冲锋 - 重装步兵密集攻击",
+                "shield_wall": "盾牌墙 - 防御性队形",
+                "cavalry_assault": "骑兵突击 - 机动性强力攻击",
+                "archer_volley": "弓箭齐射 - 远程火力压制",
+                "feigned_retreat": "假退战术 - 诱敌深入的诡计",
+                "grand_tactics": "宏大战术 - 大规模协同作战",
+                "defensive_position": "防御阵地 - 固守优势地形",
+                "alliance_warfare": "联盟作战 - 多方联合对抗"
+            };
+            
+            return descriptions[tactic] || tactic;
+        }
+        
+        // 更新状态显示
+        function updateStatus(message) {
+            const statusElement = document.getElementById('currentStatus');
+            statusElement.innerHTML = message;
+        }
+        
+        // 开始战役动画
+        function startBattleAnimation() {
+            console.log("🎬 开始战役动画");
+            isPlaying = true;
+            animationTime = 0;
+            processedEvents.clear();
+            
+            // 更新播放按钮状态
+            const playBtn = document.getElementById('playBtn');
+            playBtn.textContent = '⏸ 播放中';
+            playBtn.classList.add('playing');
+            
+            // 启用播放模式
+            enterPlayMode();
+            
+            // 开始渲染循环
+            startRenderLoop();
+            
+            // 立即开始处理事件
+            setTimeout(() => {
+                processBattleEvents(1);
+            }, 1000);
+        }
+        
+        // 进入播放模式
+        function enterPlayMode() {
+            document.getElementById('gameContainer').classList.add('play-mode');
+            
+            // 最小化控制面板
+            const gameUI = document.getElementById('mainControlPanel');
+            if (gameUI) {
+                gameUI.classList.add('minimized');
+            }
+            
+            // 创建最小化播放控制条
+            createMiniControlBar();
+            
+            console.log("🎮 已进入播放模式");
+        }
+        
+        // 退出播放模式
+        function exitPlayMode() {
+            document.getElementById('gameContainer').classList.remove('play-mode');
+            
+            // 恢复正常控制面板
+            const gameUI = document.getElementById('mainControlPanel');
+            if (gameUI) {
+                gameUI.classList.remove('minimized');
+            }
+            
+            // 移除最小化控制条
+            const miniBar = document.querySelector('.mini-control-bar');
+            if (miniBar) {
+                miniBar.remove();
+            }
+            
+            console.log("🎮 已退出播放模式");
+        }
+        
+        // 创建最小化播放控制条
+        function createMiniControlBar() {
+            // 移除已存在的最小化控制条
+            const existing = document.querySelector('.mini-control-bar');
+            if (existing) existing.remove();
+            
+            const miniBar = document.createElement('div');
+            miniBar.className = 'mini-control-bar';
+            miniBar.innerHTML = `
+                <button class="mini-btn" id="miniPlayBtn">▶</button>
+                <button class="mini-btn" id="miniPauseBtn">⏸</button>
+                <button class="mini-btn" id="miniResetBtn">↺</button>
+                <button class="mini-btn" id="miniSpeedBtn">1x</button>
+                <button class="mini-btn" id="miniFullscreenBtn">⛶</button>
+            `;
+            
+            document.getElementById('gameContainer').appendChild(miniBar);
+            
+            // 添加最小化控制条事件监听器
+            document.getElementById('miniPlayBtn').addEventListener('click', () => {
+                if (isPlaying) {
+                    pauseBattle();
+                } else {
+                    resumeBattle();
+                }
+            });
+            
+            document.getElementById('miniPauseBtn').addEventListener('click', pauseBattle);
+            document.getElementById('miniResetBtn').addEventListener('click', resetBattle);
+            document.getElementById('miniSpeedBtn').addEventListener('click', toggleSpeed);
+            document.getElementById('miniFullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            console.log("🎮 最小化控制条已创建");
+        }
+        
+        // 全屏切换功能
+        function toggleFullscreen() {
+            const cesiumContainer = document.getElementById('cesiumContainer');
+            
+            if (cesiumContainer.classList.contains('fullscreen')) {
+                // 退出全屏
+                cesiumContainer.classList.remove('fullscreen');
+                updateStatus("已退出全屏模式");
+            } else {
+                // 进入全屏
+                cesiumContainer.classList.add('fullscreen');
+                updateStatus("已进入全屏模式");
+            }
+        }
+        
+        // 开始渲染循环
+        function startRenderLoop() {
+            // 使用Cesium的时钟系统进行同步
+            viewer.clock.onTick.addEventListener(function(clock) {
+                if (isPlaying) {
+                    // 更新动画时间
+                    animationTime = clock.currentTime.secondsOfDay;
+                    processBattleEvents(animationTime);
+                    updateUI();
+                    
+                    // 如果播放时间过长，停止播放
+                    if (animationTime > 60) { // 最多播放60秒
+                        pauseBattle();
+                        console.log("🎬 战役播放完成");
+                    }
+                }
+            });
+            
+            console.log("✅ 渲染循环已启动，与Cesium时钟同步");
+        }
+        
+        // 处理战役事件
+        function processBattleEvents(time) {
+            if (!currentBattleData || !currentBattleData.battle_timeline) {
+                console.log("⚠️ 没有战役时间线数据");
+                return;
+            }
+            
+            console.log(`📊 处理战役事件，时间: ${time}秒`);
+            
+            currentBattleData.battle_timeline.forEach((event, index) => {
+                const eventId = `${event.event_id}_${index}`;
+                
+                if (!processedEvents.has(eventId)) {
+                    // 根据时间触发事件
+                    const eventTime = getEventTime(index);
+                    console.log(`⏰ 检查事件: ${event.event_id}, 触发时间: ${eventTime}秒, 当前时间: ${time}秒`);
+                    
+                    if (time >= eventTime) {
+                        console.log(`⚡ 触发事件: ${event.description}`);
+                        triggerEvent(event);
+                        processedEvents.add(eventId);
+                    }
+                }
+            });
+        }
+        
+        // 获取事件时间（改进版）
+        function getEventTime(eventIndex) {
+            // 每隔5秒触发一个事件，给用户足够时间观察
+            return eventIndex * 5 + 2; // 第1个事件在2秒后，第2个在7秒后，以此类推
+        }
+        
+        // 触发战役事件
+        function triggerEvent(event) {
+            console.log(`⚡ 触发事件: ${event.description}`);
+            
+            updateStatus(event.description);
+            
+            // 实时更新战术解析面板
+            updateTacticsPanelWithEvent(event);
+            
+            // 根据事件类型执行不同效果
+            switch (event.event_type) {
+                case 'deployment':
+                    createDeploymentEffect(event);
+                    break;
+                case 'decisive_maneuver':
+                    createDecisiveManeuverEffect(event);
+                    break;
+                case 'retreat':
+                    createRetreatEffect(event);
+                    break;
+                case 'assault':
+                    createAssaultEffect(event);
+                    break;
+            }
+        }
+        
+        // 创建设置效果
+        function createDeploymentEffect(event) {
+            if (effectsEnabled) {
+                // 创建军队设置动画
+                createArmyFormation(event);
+            }
+        }
+        
+        // 创建决定性行动效果
+        function createDecisiveManeuverEffect(event) {
+            if (effectsEnabled) {
+                // 创建决定性行动特效
+                createBattleEffect(event.location);
+                if (event.effects && event.effects.fire) {
+                    createFireEffect(event.location);
+                }
+            }
+        }
+        
+        // 创建撤退效果
+        function createRetreatEffect(event) {
+            if (effectsEnabled) {
+                // 创建撤退动画
+                createRetreatAnimation(event);
+            }
+        }
+        
+        // 创建攻击效果
+        function createAssaultEffect(event) {
+            if (effectsEnabled) {
+                // 创建攻击动画
+                createAssaultAnimation(event);
+            }
+        }
+        
+        // 创建军队设置动画
+        function createArmyFormation(event) {
+            if (!viewer) {
+                console.error("Viewer未初始化，无法创建军队设置");
+                return;
+            }
+            
+            event.participants.forEach(forceId => {
+                const position = Cesium.Cartesian3.fromDegrees(
+                    event.location[0], event.location[1], 100
+                );
+                
+                // 创建军队实体
+                const armyEntity = viewer.entities.add({
+                    position: position,
+                    point: {
+                        pixelSize: 30,
+                        color: getForceColor(forceId),
+                        outlineColor: Cesium.Color.WHITE,
+                        outlineWidth: 3
+                    },
+                    label: {
+                        text: getForceName(forceId),
+                        font: '16px Arial Black',
+                        fillColor: Cesium.Color.WHITE,
+                        outlineColor: Cesium.Color.BLACK,
+                        outlineWidth: 2,
+                        style: Cesium.LabelStyle.FILL_AND_OUTLINE
+                    }
+                });
+                
+                // 创建单位组并添加到队形系统
+                if (window.FormationAnimationSystem) {
+                    // 初始化队形系统（如果还没有）
+                    if (!formationSystem) {
+                        formationSystem = new window.FormationAnimationSystem(viewer);
+                    }
+                    
+                    const units = createUnitEntities(forceId, position);
+                    const unitGroupId = `force_${forceId}_${Date.now()}`;
+                    
+                    // 添加到队形动画系统
+                    formationSystem.addUnitGroup(unitGroupId, units, {
+                        lon: event.location[0],
+                        lat: event.location[1]
+                    });
+                    
+                    // 根据战役类型选择合适的队形
+                    const formationType = selectFormationForForce(forceId, currentBattleData.battle_id);
+                    if (formationType) {
+                        formationSystem.createFormationAnimation(unitGroupId, formationType, {
+                            onComplete: (animation) => {
+                                console.log(`军队 ${forceId} 队形设置完成: ${formationType}`);
+                            }
+                        });
+                    }
+                }
+                
+                // 添加强制效果
+                createFormationParticles(position, getForceColor(forceId));
+            });
+        }
+        
+        // 创建单位实体
+        function createUnitEntities(forceId, centerPosition) {
+            const units = [];
+            const unitCount = 20; // 每个军队20个单位
+            const forceColor = getForceColor(forceId);
+            
+            for (let i = 0; i < unitCount; i++) {
+                // 计算单位位置（围绕中心点分布）
+                const angle = (i / unitCount) * Math.PI * 2;
+                const radius = 100 + (i % 3) * 30; // 不同圈层
+                const offsetLon = Math.cos(angle) * radius * 0.0001;
+                const offsetLat = Math.sin(angle) * radius * 0.0001;
+                
+                const unitPosition = Cesium.Cartesian3.fromDegrees(
+                    centerPosition.lon + offsetLon,
+                    centerPosition.lat + offsetLat,
+                    50
+                );
+                
+                const unitEntity = viewer.entities.add({
+                    position: unitPosition,
+                    point: {
+                        pixelSize: 15,
+                        color: forceColor,
+                        outlineColor: Cesium.Color.WHITE,
+                        outlineWidth: 1
+                    },
+                    label: {
+                        text: `${getForceName(forceId)}${i + 1}`,
+                        font: '10px Arial',
+                        fillColor: Cesium.Color.WHITE,
+                        outlineColor: Cesium.Color.BLACK,
+                        outlineWidth: 1,
+                        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                        pixelOffset: new Cesium.Cartesian2(0, -20)
+                    }
+                });
+                
+                units.push({
+                    id: `${forceId}_unit_${i}`,
+                    entity: unitEntity,
+                    position: unitPosition,
+                    group: forceId,
+                    centerPosition: centerPosition // 添加中心位置引用
+                });
+            }
+            
+            return units;
+        }
+        
+        // 根据军队类型选择队形
+        function selectFormationForForce(forceId, battleId) {
+            const battleInfo = battlesDatabase[battleId];
+            if (!battleInfo) return null;
+            
+            const period = battleInfo.period;
+            const forceUnits = battleInfo.units[forceId];
+            
+            // 根据历史时期和兵种类型选择队形
+            if (period === 'ancient') {
+                if (forceUnits.includes('hoplite') || forceUnits.includes('legionnaire')) {
+                    return 'phalanx'; // 方阵
+                } else if (forceUnits.includes('archer')) {
+                    return 'volley'; // 齐射
+                }
+            } else if (period === 'medieval') {
+                if (forceUnits.includes('knight')) {
+                    return 'cavalry_wedge'; // 骑兵楔形
+                } else if (forceUnits.includes('man_at_arms')) {
+                    return 'shield_wall'; // 盾牌墙
+                }
+            } else if (period === 'modern') {
+                if (forceUnits.includes('line_infantry')) {
+                    return 'linear_formation'; // 线列阵
+                } else if (forceUnits.includes('cavalry')) {
+                    return 'cavalry_wedge'; // 骑兵楔形
+                }
+            }
+            
+            // 默认队形
+            return 'linear_formation';
+        }
+        
+        // 创建战斗效果
+        function createBattleEffect(location) {
+            const position = Cesium.Cartesian3.fromDegrees(location[0], location[1], 200);
+            
+            // 爆炸粒子效果
+            const explosionSystem = new Cesium.ParticleSystem({
+                modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(position),
+                minimumSpeed: 15.0,
+                maximumSpeed: 30.0,
+                lifetime: 5.0,
+                emitter: new Cesium.SphereEmitter(80),
+                startScale: 2.0,
+                endScale: 1.0,
+                startColor: Cesium.Color.WHITE.withAlpha(1.0),
+                endColor: Cesium.Color.RED.withAlpha(0.0),
+                minimumPixelSize: 30,
+                maximumPixelSize: 80,
+                image: createExplosionImage()
+            });
+            
+            viewer.scene.primitives.add(explosionSystem);
+            
+            // 5秒后移除效果
+            setTimeout(() => {
+                viewer.scene.primitives.remove(explosionSystem);
+            }, 5000);
+        }
+        
+        // 创建火焰效果
+        function createFireEffect(location) {
+            const position = Cesium.Cartesian3.fromDegrees(location[0], location[1], 150);
+            
+            // 火焰粒子效果
+            const fireSystem = new Cesium.ParticleSystem({
+                modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(position),
+                minimumSpeed: 2.0,
+                maximumSpeed: 8.0,
+                lifetime: 15.0,
+                emitter: new Cesium.ConeEmitter(Cesium.Math.toRadians(30.0)),
+                startScale: 1.0,
+                endScale: 3.0,
+                startColor: Cesium.Color.RED.withAlpha(1.0),
+                endColor: Cesium.Color.ORANGE.withAlpha(0.0),
+                minimumPixelSize: 20,
+                maximumPixelSize: 100,
+                image: createFireImage()
+            });
+            
+            viewer.scene.primitives.add(fireSystem);
+            
+            // 15秒后移除
+            setTimeout(() => {
+                viewer.scene.primitives.remove(fireSystem);
+            }, 15000);
+        }
+        
+        // 创建撤退动画
+        function createRetreatAnimation(event) {
+            console.log("🏃 创建撤退动画:", event.description);
+            // 简化的撤退动画
+            event.participants.forEach(forceId => {
+                console.log(`${forceId} 开始撤退`);
+                // 可以添加撤退的视觉效果
+                createRetreatEffectVisual(forceId, event.location);
+            });
+        }
+        
+        // 创建攻击动画
+        function createAssaultAnimation(event) {
+            console.log("⚔️ 创建攻击动画:", event.description);
+            // 简化的攻击动画
+            event.participants.forEach(forceId => {
+                console.log(`${forceId} 发起攻击`);
+                // 可以添加攻击的视觉效果
+                createAssaultEffectVisual(forceId, event.location);
+            });
+        }
+        
+        // 创建撤退视觉效果
+        function createRetreatEffectVisual(forceId, location) {
+            const position = Cesium.Cartesian3.fromDegrees(location[0], location[1], 100);
+            const entity = viewer.entities.add({
+                position: position,
+                point: {
+                    pixelSize: 20,
+                    color: Cesium.Color.RED.withAlpha(0.7),
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 2
+                },
+                label: {
+                    text: `${getForceName(forceId)}撤退`,
+                    font: '14px Arial',
+                    fillColor: Cesium.Color.WHITE,
+                    outlineColor: Cesium.Color.BLACK,
+                    outlineWidth: 2
+                }
+            });
+            
+            // 3秒后移除
+            setTimeout(() => {
+                viewer.entities.remove(entity);
+            }, 3000);
+        }
+        
+        // 创建攻击视觉效果
+        function createAssaultEffectVisual(forceId, location) {
+            const position = Cesium.Cartesian3.fromDegrees(location[0], location[1], 150);
+            const entity = viewer.entities.add({
+                position: position,
+                point: {
+                    pixelSize: 25,
+                    color: Cesium.Color.ORANGE.withAlpha(0.8),
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 3
+                },
+                label: {
+                    text: `${getForceName(forceId)}攻击`,
+                    font: '14px Arial',
+                    fillColor: Cesium.Color.WHITE,
+                    outlineColor: Cesium.Color.BLACK,
+                    outlineWidth: 2
+                }
+            });
+            
+            // 5秒后移除
+            setTimeout(() => {
+                viewer.entities.remove(entity);
+            }, 5000);
+        }
+        
+        // 简化的撤退路径生成
+        function createRetreatPath(location, forceId) {
+            const currentPos = Cesium.Cartesian3.fromDegrees(location[0], location[1]);
+            const retreatDistance = 0.01; // 约1公里
+            const randomAngle = Math.random() * Math.PI * 2;
+            const retreatX = location[0] + Math.cos(randomAngle) * retreatDistance;
+            const retreatY = location[1] + Math.sin(randomAngle) * retreatDistance;
+            
+            return {
+                start: currentPos,
+                end: Cesium.Cartesian3.fromDegrees(retreatX, retreatY),
+                forceId: forceId
+            };
+        }
+        
+        // 简化的撤退动画
+        function animateRetreat(path, forceId) {
+            console.log(`🏃 ${forceId} 撤退路径:`, path);
+            // 可以添加实际的移动动画，这里只是简化处理
+        }
+        
+        // 简化的攻击效果
+        function createAssaultEffect(forceId, location) {
+            console.log(`⚔️ ${forceId} 在位置 ${location} 发起攻击`);
+            // 攻击效果已在上面处理
+        }
+        
+        // 创建爆炸图像
+        function createExplosionImage() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+            gradient.addColorStop(0.3, 'rgba(255, 165, 0, 0.8)');
+            gradient.addColorStop(0.6, 'rgba(255, 69, 0, 0.6)');
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0.0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(32, 32, 32, 0, Math.PI * 2);
+            ctx.fill();
+            
+            return canvas;
+        }
+        
+        // 创建火焰图像
+        function createFireImage() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            
+            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255, 255, 0, 1.0)');
+            gradient.addColorStop(0.5, 'rgba(255, 165, 0, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0.0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(16, 16, 16, 0, Math.PI * 2);
+            ctx.fill();
+            
+            return canvas;
+        }
+        
+        // 获取军队颜色
+        function getForceColor(forceId) {
+            const colors = {
+                'cao_cao': Cesium.Color.RED,
+                'sun_liu': Cesium.Color.BLUE,
+                'persian_empire': Cesium.Color.GOLD,
+                'greek_city_states': Cesium.Color.WHITE,
+                'anglo_saxons': Cesium.Color.GREEN,
+                'normans': Cesium.Color.ORANGE,
+                'napoleonic_army': Cesium.Color.RED,
+                'coalition_army': Cesium.Color.BLUE,
+                'confederate_army': Cesium.Color.GRAY,
+                'union_army': Cesium.Color.DODGERBLUE
+            };
+            return colors[forceId] || Cesium.Color.WHITE;
+        }
+        
+        // 获取军队名称
+        function getForceName(forceId) {
+            if (currentBattleData) {
+                const participant = currentBattleData.participants.find(p => p.force_id === forceId);
+                return participant ? participant.name : forceId;
+            }
+            return forceId;
+        }
+        
+        // 创建队形粒子效果
+        function createFormationParticles(position, color) {
+            const particleSystem = new Cesium.ParticleSystem({
+                modelMatrix: Cesium.Transforms.eastNorthUpToFixedFrame(position),
+                minimumSpeed: 0.5,
+                maximumSpeed: 2.0,
+                lifetime: 3.0,
+                emitter: new Cesium.SphereEmitter(30),
+                startScale: 0.5,
+                endScale: 1.0,
+                startColor: color.withAlpha(0.8),
+                endColor: color.withAlpha(0.0),
+                minimumPixelSize: 10,
+                maximumPixelSize: 30,
+                image: createParticleImage(color)
+            });
+            
+            viewer.scene.primitives.add(particleSystem);
+            
+            setTimeout(() => {
+                viewer.scene.primitives.remove(particleSystem);
+            }, 3000);
+        }
+        
+        // 创建粒子图像
+        function createParticleImage(color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 16;
+            canvas.height = 16;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = color.toCssColorString();
+            ctx.beginPath();
+            ctx.arc(8, 8, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            return canvas;
+        }
+        
+        // 更新UI状态
+        function updateUI() {
+            // 更新播放状态显示
+            if (isPlaying) {
+                updateStatus(`战役进行中... (${Math.round(animationTime)}秒)`);
+            }
+        }
+        
+        // 暂停播放
+        function pauseBattle() {
+            isPlaying = false;
+            viewer.clock.multiplier = 0;
+            
+            const playBtn = document.getElementById('playBtn');
+            playBtn.textContent = '▶ 播放';
+            playBtn.classList.remove('playing');
+            
+            // 退出播放模式
+            exitPlayMode();
+            
+            updateStatus('已暂停');
+        }
+        
+        // 恢复播放
+        function resumeBattle() {
+            isPlaying = true;
+            viewer.clock.multiplier = currentSpeed;
+            
+            const playBtn = document.getElementById('playBtn');
+            playBtn.textContent = '⏸ 播放中';
+            playBtn.classList.add('playing');
+            
+            // 重新进入播放模式
+            enterPlayMode();
+            
+            updateStatus('继续播放');
+        }
+        
+        // 重置战役
+        function resetBattle() {
+            isPlaying = false;
+            animationTime = 0;
+            processedEvents.clear();
+            
+            // 清除所有实体
+            if (viewer && viewer.entities) {
+                viewer.entities.removeAll();
+            }
+            if (viewer && viewer.scene && viewer.scene.primitives) {
+                viewer.scene.primitives.removeAll();
+            }
+            
+            // 重置时间
+            if (viewer && viewer.clock) {
+                viewer.clock.currentTime = viewer.clock.startTime.clone();
+                viewer.clock.multiplier = 0;
+            }
+            
+            // 退出播放模式
+            exitPlayMode();
+            
+            const playBtn = document.getElementById('playBtn');
+            if (playBtn) {
+                playBtn.textContent = '▶ 播放';
+                playBtn.classList.remove('playing');
+            }
+            
+            updateStatus('已重置，选择战役开始');
+            
+            // 显示战役选择器
+            const selector = document.getElementById('battleSelector');
+            if (selector) {
+                selector.style.display = 'block';
+                selector.style.visibility = 'visible';
+                selector.style.opacity = '1';
+            }
+        }
+        
+        // 切换倍速
+        function toggleSpeed() {
+            const speeds = [1, 2, 4, 8, 16];
+            const currentIndex = speeds.indexOf(currentSpeed);
+            const nextIndex = (currentIndex + 1) % speeds.length;
+            currentSpeed = speeds[nextIndex];
+            
+            const speedBtn = document.getElementById('speedBtn');
+            speedBtn.textContent = `🚀 ${currentSpeed}x`;
+            
+            if (isPlaying) {
+                viewer.clock.multiplier = currentSpeed;
+            }
+            
+            updateStatus(`播放速度: ${currentSpeed}x`);
+        }
+        
+        // 切换特效
+        function toggleEffects() {
+            effectsEnabled = !effectsEnabled;
+            
+            const effectsBtn = document.getElementById('effectsBtn');
+            effectsBtn.textContent = effectsEnabled ? '✨ 特效' : '⚪ 无特效';
+            
+            if (effectsEnabled) {
+                effectsBtn.style.background = 'linear-gradient(45deg, #10ac84, #00d2d3)';
+            } else {
+                effectsBtn.style.background = 'linear-gradient(45deg, #888, #666)';
+            }
+            
+            updateStatus(`特效: ${effectsEnabled ? '开启' : '关闭'}`);
+        }
+        
+        // 切换天气
+        function toggleWeather() {
+            weatherEnabled = !weatherEnabled;
+            
+            const weatherBtn = document.getElementById('weatherBtn');
+            weatherBtn.textContent = weatherEnabled ? '🌦️ 天气' : '☀️ 晴天';
+            
+            updateStatus(`天气效果: ${weatherEnabled ? '开启' : '关闭'}`);
+        }
+        
+        // 观察模式切换
+        function setObservationMode(mode) {
+            if (!currentBattleData || !currentBattleData.location) {
+                console.warn("没有战役位置数据");
+                return;
+            }
+            
+            const location = currentBattleData.location;
+            
+            switch (mode) {
+                case 'overview':
+                    // 全景模式 - 俯视角度
+                    viewer.camera.flyTo({
+                        destination: Cesium.Cartesian3.fromDegrees(
+                            location.lon,
+                            location.lat,
+                            25000.0
+                        ),
+                        orientation: {
+                            heading: Cesium.Math.toRadians(0),
+                            pitch: Cesium.Math.toRadians(-45),
+                            roll: 0.0
+                        },
+                        duration: 2.0
+                    });
+                    updateStatus('已切换到全景观察模式');
+                    break;
+                    
+                case 'tactical':
+                    // 战术模式 - 较低角度观察
+                    viewer.camera.flyTo({
+                        destination: Cesium.Cartesian3.fromDegrees(
+                            location.lon,
+                            location.lat,
+                            8000.0
+                        ),
+                        orientation: {
+                            heading: Cesium.Math.toRadians(45),
+                            pitch: Cesium.Math.toRadians(-30),
+                            roll: 0.0
+                        },
+                        duration: 2.0
+                    });
+                    updateStatus('已切换到战术观察模式');
+                    break;
+                    
+                case 'aerial':
+                    // 空中模式 - 接近地面
+                    viewer.camera.flyTo({
+                        destination: Cesium.Cartesian3.fromDegrees(
+                            location.lon,
+                            location.lat,
+                            1500.0
+                        ),
+                        orientation: {
+                            heading: Cesium.Math.toRadians(90),
+                            pitch: Cesium.Math.toRadians(-15),
+                            roll: 0.0
+                        },
+                        duration: 2.0
+                    });
+                    updateStatus('已切换到空中观察模式');
+                    break;
+                    
+                case 'fullscreen':
+                    // 全屏模式 - 填充整个动画窗口
+                    toggleFullscreen();
+                    break;
+            }
+        }
+        
+        // 事件监听器设置
+        function setupEventListeners() {
+            // 战役选择器
+            document.querySelectorAll('.battle-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    handleBattleSelection(btn.dataset.battle);
+                });
+            });
+            
+            // 播放控制
+            document.getElementById('playBtn').addEventListener('click', () => {
+                if (isPlaying) {
+                    pauseBattle();
+                } else {
+                    resumeBattle();
+                }
+            });
+            
+            document.getElementById('pauseBtn').addEventListener('click', pauseBattle);
+            document.getElementById('resetBtn').addEventListener('click', resetBattle);
+            document.getElementById('speedBtn').addEventListener('click', toggleSpeed);
+            
+            // 观察模式
+            document.getElementById('overviewBtn').addEventListener('click', () => setObservationMode('overview'));
+            document.getElementById('tacticalBtn').addEventListener('click', () => setObservationMode('tactical'));
+            document.getElementById('aerialBtn').addEventListener('click', () => setObservationMode('aerial'));
+            
+            // 效果控制
+            document.getElementById('effectsBtn').addEventListener('click', toggleEffects);
+            document.getElementById('weatherBtn').addEventListener('click', toggleWeather);
+            
+            // 音效和教学控制
+            document.getElementById('audioBtn').addEventListener('click', toggleAudio);
+            document.getElementById('teachingBtn').addEventListener('click', toggleTeachingMode);
+            
+            // AI聊天控制
+            document.getElementById('aiChatFloatBtn').addEventListener('click', toggleAIChat);
+            document.getElementById('aiChatSendBtn').addEventListener('click', sendChatMessage);
+            document.getElementById('aiChatInput').addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    sendChatMessage();
+                }
+            });
+            
+            // 聊天面板切换按钮
+            document.getElementById('aiToggleBtn').addEventListener('click', toggleAIChat);
+        }
+        
+        // ========== AI聊天功能 ==========
+        
+        // 切换AI聊天界面
+        function toggleAIChat() {
+            const chatPanel = document.getElementById('aiChatPanel');
+            const chatFloatBtn = document.getElementById('aiChatFloatBtn');
+            
+            if (aiChatVisible) {
+                chatPanel.style.display = 'none';
+                chatFloatBtn.classList.add('pulse');
+                aiChatVisible = false;
+                updateStatus("AI助手已隐藏");
+            } else {
+                chatPanel.style.display = 'block';
+                chatPanel.classList.add('expanded');
+                chatFloatBtn.classList.remove('pulse');
+                aiChatVisible = true;
+                updateStatus("AI助手已开启，可以开始对话");
+                
+                // 如果还没有初始化AI系统
+                if (!aiSystem) {
+                    initializeAISystem();
+                }
+            }
+        }
+        
+        // 初始化AI系统
+        function initializeAISystem() {
+            aiSystem = {
+                isInitialized: true,
+                apiURL: '/api/v1/llm/military-analysis',
+                sendMessage: async function(message) {
+                    try {
+                        // 构建带上下文的提示
+                        const battleContext = getBattleContext();
+                        const enhancedMessage = buildEnhancedPrompt(battleContext, message);
+                        
+                        const response = await fetch(this.apiURL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ prompt: enhancedMessage })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            return data.response || "抱歉，AI助手暂时无法回答这个问题。";
+                        } else {
+                            const errorText = await response.text();
+                            throw new Error(`API错误: ${response.status} - ${errorText}`);
+                        }
+                    } catch (error) {
+                        console.error('AI聊天错误:', error);
+                        return "抱歉，AI助手暂时无法响应，请稍后再试。";
+                    }
+                }
+            };
+            
+            console.log("🤖 AI聊天系统已初始化");
+        }
+        
+        // 获取战役上下文
+        function getBattleContext() {
+            if (!currentBattleData) {
+                return "用户正在查看战役可视化系统，当前还没有选择具体的战役。";
+            }
+            
+            const battle = currentBattleData;
+            let context = `当前正在观看: ${battle.name || '未知战役'}`;
+            
+            if (battle.location) {
+                context += `，地点: 经度${battle.location.lon}, 纬度${battle.location.lat}`;
+            }
+            
+            if (battle.participants && battle.participants.length > 0) {
+                context += "，参战方: ";
+                const participants = battle.participants.map(p => `${p.name}(指挥官: ${p.commander})`);
+                context += participants.join("、");
+            }
+            
+            if (battle.battle_timeline && battle.battle_timeline.length > 0) {
+                const currentEvent = battle.battle_timeline[processedEvents.size] || battle.battle_timeline[0];
+                if (currentEvent) {
+                    context += `，当前状态: ${currentEvent.description}`;
+                }
+            }
+            
+            return context;
+        }
+        
+        // 构建增强的提示词
+        function buildEnhancedPrompt(battleContext, userMessage) {
+            let enhancedMessage = userMessage;
+            
+            // 如果用户询问当前战役相关内容，自动添加上下文
+            const battleKeywords = ['这个战役', '这个战争', '这场战斗', '这场战役', '现在', '当前'];
+            const isAskingAboutCurrent = battleKeywords.some(keyword => userMessage.includes(keyword));
+            
+            if (battleContext !== "用户正在查看战役可视化系统，当前还没有选择具体的战役。" && isAskingAboutCurrent) {
+                enhancedMessage = `关于当前正在观看的战役(${battleContext})，用户询问: ${userMessage}`;
+            }
+            
+            return enhancedMessage;
+        }
+        
+        // 发送聊天消息
+        async function sendChatMessage() {
+            const input = document.getElementById('aiChatInput');
+            const message = input.value.trim();
+            
+            if (!message || !aiSystem) {
+                return;
+            }
+            
+            // 添加用户消息到界面
+            addChatMessage(message, 'user');
+            input.value = '';
+            
+            // 显示AI思考状态
+            const thinkingMessage = addChatMessage('正在思考中...', 'thinking');
+            
+            try {
+                // 调用主支的AI API
+                const response = await aiSystem.sendMessage(message);
+                
+                // 移除思考状态
+                if (thinkingMessage) {
+                    thinkingMessage.remove();
+                }
+                
+                // 添加AI回复（支持换行格式）
+                addChatMessage(response, 'assistant');
+                
+                // 记录聊天历史
+                chatMessageHistory.push({
+                    role: 'user',
+                    content: message,
+                    timestamp: new Date().toISOString()
+                });
+                
+                chatMessageHistory.push({
+                    role: 'assistant',
+                    content: response,
+                    timestamp: new Date().toISOString()
+                });
+                
+            } catch (error) {
+                // 移除思考状态并显示错误
+                if (thinkingMessage) {
+                    thinkingMessage.textContent = '抱歉，AI助手暂时无法响应';
+                    thinkingMessage.className = 'ai-message ai-assistant-message';
+                }
+            }
+        }
+        
+        // 添加聊天消息到界面
+        function addChatMessage(message, type) {
+            const messagesContainer = document.getElementById('aiChatMessages');
+            const messageDiv = document.createElement('div');
+            
+            let cssClass = 'ai-message ';
+            switch (type) {
+                case 'user':
+                    cssClass += 'ai-user-message';
+                    break;
+                case 'assistant':
+                    cssClass += 'ai-assistant-message';
+                    break;
+                case 'thinking':
+                    cssClass += 'ai-thinking';
+                    break;
+                default:
+                    cssClass += 'ai-assistant-message';
+            }
+            
+            messageDiv.className = cssClass;
+            
+            // 支持换行符和基本HTML格式
+            if (type === 'assistant') {
+                // AI回复支持换行
+                messageDiv.innerHTML = message.replace(/\n/g, '<br>');
+            } else {
+                messageDiv.textContent = message;
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+        
+        // ========== 原有的音效和教学功能 ==========
+        
+        // 切换音效
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            
+            const audioBtn = document.getElementById('audioBtn');
+            audioBtn.textContent = audioEnabled ? '🔊 音效' : '🔇 静音';
+            
+            if (audioEnabled) {
+                audioBtn.style.background = 'linear-gradient(45deg, #10ac84, #00d2d3)';
+                initializeAudioSystem();
+            } else {
+                audioBtn.style.background = 'linear-gradient(45deg, #888, #666)';
+                stopAllSounds();
+            }
+            
+            updateStatus(`音效: ${audioEnabled ? '开启' : '关闭'}`);
+        }
+        
+        // 切换教学模式
+        function toggleTeachingMode() {
+            teachingModeEnabled = !teachingModeEnabled;
+            
+            const teachingBtn = document.getElementById('teachingBtn');
+            teachingBtn.textContent = teachingModeEnabled ? '📚 教学' : '🎮 游戏';
+            
+            if (teachingModeEnabled) {
+                teachingBtn.style.background = 'linear-gradient(45deg, #10ac84, #00d2d3)';
+                enableTeachingMode();
+            } else {
+                teachingBtn.style.background = 'linear-gradient(45deg, #888, #666)';
+                disableTeachingMode();
+            }
+            
+            updateStatus(`教学模式: ${teachingModeEnabled ? '开启' : '关闭'}`);
+        }
+        
+        // 其他功能函数保持不变...
+        // 初始化音效系统、教学模式等函数的完整实现...
+        function initializeAudioSystem() {
+            if (window.AudioSystem) {
+                try {
+                    audioSystem = new window.AudioSystem();
+                    if (typeof audioSystem.initialize === 'function') {
+                        audioSystem.initialize().then(() => {
+                            console.log("🔊 音效系统初始化成功");
+                            playAmbientSound();
+                        }).catch(error => {
+                            console.error("音效系统初始化失败:", error);
+                        });
+                    } else {
+                        // 如果没有initialize方法，直接标记为已初始化
+                        console.log("🔊 音效系统已准备就绪");
+                    }
+                } catch (error) {
+                    console.error("音效系统创建失败:", error);
+                }
+            } else {
+                console.warn("🔊 音效系统模块未找到");
+            }
+        }
+        
+        function playAmbientSound() {
+            if (audioSystem && currentBattleData) {
+                try {
+                    if (typeof audioSystem.playBattleAmbient === 'function') {
+                        audioSystem.playBattleAmbient(currentBattleData.historical_period);
+                    } else {
+                        console.log("🔊 播放环境音效:", currentBattleData.historical_period);
+                    }
+                } catch (error) {
+                    console.error("播放音效失败:", error);
+                }
+            }
+        }
+        
+        function stopAllSounds() {
+            if (audioSystem) {
+                try {
+                    if (typeof audioSystem.stopAllSounds === 'function') {
+                        audioSystem.stopAllSounds();
+                    } else {
+                        console.log("🔊 停止所有音效");
+                    }
+                } catch (error) {
+                    console.error("停止音效失败:", error);
+                }
+            }
+        }
+        
+        function enableTeachingMode() {
+            if (window.EducationalSystem) {
+                showEducationalPanel();
+                enableInteractiveTutorials();
+            }
+        }
+        
+        function disableTeachingMode() {
+            hideEducationalPanel();
+            disableInteractiveTutorials();
+        }
+        
+        function showEducationalPanel() {
+            const panel = document.getElementById('educationalPanel');
+            if (!panel) {
+                createEducationalPanel();
+            } else {
+                panel.style.display = 'block';
+            }
+        }
+        
+        function hideEducationalPanel() {
+            const panel = document.getElementById('educationalPanel');
+            if (panel) {
+                panel.style.display = 'none';
+            }
+        }
+        
+        function createEducationalPanel() {
+            const panel = document.createElement('div');
+            panel.id = 'educationalPanel';
+            panel.className = 'educational-panel';
+            panel.innerHTML = `
+                <div class="educational-content">
+                    <h3>📚 战术教学</h3>
+                    <div id="tacticalExplanation">等待战役开始...</div>
+                    <button class="control-btn" onclick="nextTacticalStep()">下一步</button>
+                </div>
+            `;
+            document.getElementById('gameContainer').appendChild(panel);
+        }
+        
+        function enableInteractiveTutorials() {
+            document.addEventListener('mouseover', highlightRelevantUnits);
+            document.addEventListener('click', showUnitDetails);
+        }
+        
+        function disableInteractiveTutorials() {
+            document.removeEventListener('mouseover', highlightRelevantUnits);
+            document.removeEventListener('click', showUnitDetails);
+            clearAllHighlights();
+        }
+        
+        function highlightRelevantUnits(event) {
+            if (event.target.classList.contains('unit-item')) {
+                const unitName = event.target.querySelector('strong').textContent;
+                highlightUnitsByType(unitName);
+            }
+        }
+        
+        function showUnitDetails(event) {
+            if (event.target.classList.contains('unit-item')) {
+                const unitName = event.target.querySelector('strong').textContent;
+                showDetailedUnitInfo(unitName);
+            }
+        }
+        
+        function highlightUnitsByType(unitName) {
+            console.log(`高亮显示: ${unitName}`);
+        }
+        
+        function showDetailedUnitInfo(unitName) {
+            const unitInfo = getUnitInfo(unitName);
+            if (unitInfo) {
+                showDetailedInfoPanel(unitInfo);
+            }
+        }
+        
+        function showDetailedInfoPanel(unitInfo) {
+            console.log("显示详细信息:", unitInfo);
+        }
+        
+        function clearAllHighlights() {
+            console.log("清除所有高亮");
+        }
+        
+        function nextTacticalStep() {
+            if (currentBattleData && currentBattleData.battle_timeline) {
+                const currentEvent = getCurrentTacticalEvent();
+                if (currentEvent) {
+                    explainTacticalEvent(currentEvent);
+                }
+            }
+        }
+        
+        function getCurrentTacticalEvent() {
+            if (!currentBattleData || !currentBattleData.battle_timeline) return null;
+            return currentBattleData.battle_timeline[0];
+        }
+        
+        function explainTacticalEvent(event) {
+            const explanation = generateTacticalExplanation(event);
+            const panel = document.getElementById('tacticalExplanation');
+            if (panel) {
+                panel.innerHTML = explanation;
+            }
+        }
+        
+        function generateTacticalExplanation(event) {
+            const explanations = {
+                "deployment": "军队部署阶段 - 指挥官根据地形和战术需要安排兵力部署。",
+                "decisive_maneuver": "决定性行动 - 这是改变战局的关键时刻。",
+                "retreat": "撤退行动 - 当形势不利时，有序撤退保存实力。",
+                "assault": "攻击行动 - 发起主动攻击以获取战术优势。"
+            };
+            
+            return explanations[event.event_type] || event.description;
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', function() {
+            console.log("🚀 页面加载完成，开始初始化...");
+            
+            // 设置事件监听器
+            setupEventListeners();
+            
+            // 初始化系统
+            initializeSystem().catch(error => {
+                console.error("初始化失败:", error);
+                updateStatus("初始化失败，请刷新页面重试");
+            });
+        });
+        
+        // 错误处理
+        window.addEventListener('error', function(e) {
+            console.error("全局错误:", e.error);
+            updateStatus(`错误: ${e.message}`);
+            
+            // 错误恢复机制
+            if (e.message.includes('Cesium')) {
+                console.log("尝试恢复Cesium系统...");
+                setTimeout(() => {
+                    if (!viewer || viewer.isDestroyed()) {
+                        fallbackInitialization();
+                    }
+                }, 2000);
+            }
+        });
+        
+        // 键盘快捷键支持
+        document.addEventListener('keydown', function(event) {
+            switch(event.code) {
+                case 'Space':
+                    event.preventDefault();
+                    if (isPlaying) {
+                        pauseBattle();
+                    } else {
+                        resumeBattle();
+                    }
+                    break;
+                case 'KeyR':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        resetBattle();
+                    }
+                    break;
+                case 'KeyF':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        toggleFullscreen();
+                    }
+                    break;
+                case 'KeyA':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        toggleAudio();
+                    }
+                    break;
+                case 'KeyT':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        toggleTeachingMode();
+                    }
+                    break;
+                case 'Escape':
+                    if (teachingModeEnabled) {
+                        toggleTeachingMode();
+                    }
+                    break;
+            }
+        });
+        
+        // 全屏切换
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.getElementById('gameContainer').requestFullscreen().then(() => {
+                    updateStatus("已进入全屏模式");
+                });
+            } else {
+                document.exitFullscreen().then(() => {
+                    updateStatus("已退出全屏模式");
+                });
+            }
+        }
+        
+        // 网络状态检测
+        function checkNetworkStatus() {
+            if (navigator.onLine) {
+                console.log("🌐 网络连接正常");
+            } else {
+                console.warn("⚠️ 网络连接断开");
+                updateStatus("网络连接断开，部分功能可能受限");
+            }
+        }
+        
+        // 定期检测网络状态
+        window.addEventListener('online', checkNetworkStatus);
+        window.addEventListener('offline', checkNetworkStatus);
+        checkNetworkStatus();
+        
+        // 内存清理机制
+        function scheduleMemoryCleanup() {
+            setInterval(() => {
+                if (performanceMonitor && performanceMonitor.getMemoryUsage && performanceMonitor.getMemoryUsage() > 500) {
+                    console.log("🧹 执行内存清理...");
+                    // 清理未使用的粒子效果
+                    if (viewer && viewer.scene && viewer.scene.primitives) {
+                        viewer.scene.primitives._primitives = viewer.scene.primitives._primitives.filter(primitive => {
+                            return primitive && !primitive.isDestroyed();
+                        });
+                    }
+                    
+                    // 强制垃圾回收（如果支持）
+                    if (window.gc) {
+                        window.gc();
+                    }
+                }
+            }, 30000); // 每30秒检查一次
+        }
+        
+        // 启动内存清理
+        scheduleMemoryCleanup();
+        
+        // 导出全局函数供教学系统使用
+        window.BattleVisualizationSystem = {
+            viewer,
+            currentBattleData,
+            getUnitInfo,
+            getTacticDescription,
+            getForceName,
+            getForceColor,
+            setObservationMode,
+            toggleTeachingMode,
+            toggleAudio,
+            showDetailedInfo: showDetailedInfoPanel
+        };
+        
+        console.log("🎮 全面战争风格战役可视化系统已完全加载并优化");
+    </script>
+</body>
+</html>

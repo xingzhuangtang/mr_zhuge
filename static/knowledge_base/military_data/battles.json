@@ -1,0 +1,26 @@
+{
+  "major_battles": [
+    {
+      "name": "斯大林格勒战役",
+      "date": "1942-08-23 to 1943-02-02",
+      "participants": ["苏联", "德国"],
+      "result": "苏联胜利",
+      "significance": "二战转折点",
+      "casualties": {
+        "soviet": "1,129,619",
+        "german": "851,000"
+      }
+    },
+    {
+      "name": "诺曼底登陆",
+      "date": "1944-06-06",
+      "participants": ["盟军", "德国"],
+      "result": "盟军胜利", 
+      "significance": "开辟第二战场",
+      "casualties": {
+        "allied": "10,000+",
+        "german": "4,000-9,000"
+      }
+    }
+  ]
+}

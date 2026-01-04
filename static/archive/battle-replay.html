@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>军事历史可视化系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #0f1419;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            padding: 40px;
+            background: rgba(20, 26, 35, 0.8);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        
+        p {
+            font-size: 1.2em;
+            color: #e2e8f0;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+        }
+        
+        .nav-button.primary {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #0f1419;
+        }
+        
+        .nav-button.primary:hover {
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4);
+        }
+        
+        .feature-list {
+            text-align: left;
+            margin: 20px 0;
+        }
+        
+        .feature-list li {
+            margin: 10px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .feature-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #ffd700;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ 军事历史可视化系统</h1>
+        <p>欢迎来到全新的军事历史可视化系统！我们提供革命性的AI对话+3D重现体验。</p>
+        
+        <ul class="feature-list">
+            <li>🤖 AI智能助手对话</li>
+            <li>📚 专业的军事历史分析</li>
+            <li>🖼️ 自动搜索相关历史图片</li>
+            <li>🎮 《全面战争》风格3D重现</li>
+            <li>📱 响应式设计，支持各种设备</li>
+        </ul>
+        
+        <div class="button-group">
+            <a href="deepseek-military.html" class="nav-button primary">
+                💬 开始AI对话
+            </a>
+            <a href="battle-visualization-deepseek.html" class="nav-button">
+                🎮 3D重现演示
+            </a>
+            <a href="index.html" class="nav-button">
+                🏠 返回主页
+            </a>
+        </div>
+        
+        <script>
+            // 自动跳转到新的对话界面（3秒后）
+            setTimeout(() => {
+                console.log('3秒后自动跳转到AI对话界面...');
+                window.location.href = 'deepseek-military.html';
+            }, 3000);
+        </script>
+    </div>
+</body>
+</html>

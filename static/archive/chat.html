@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>军事历史AI助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f1419;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 600px;
+            padding: 40px;
+            background: rgba(20, 26, 35, 0.9);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        
+        p {
+            font-size: 1.2em;
+            color: #e2e8f0;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+        
+        .nav-button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+        }
+        
+        .nav-button.primary {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #0f1419;
+        }
+        
+        .nav-button.primary:hover {
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4);
+        }
+        
+        .countdown {
+            color: #94a3b8;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 215, 0, 0.2);
+            border-top: 4px solid #ffd700;
+            border-radius: 50%;
+            animation: spin 1.2s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ 军事历史AI助手</h1>
+        <p>欢迎来到全新的军事历史可视化系统！我们已升级为您提供更强大的AI对话体验。</p>
+        
+        <div class="loading-spinner"></div>
+        
+        <p>正在跳转到升级后的AI对话界面...</p>
+        
+        <div class="countdown" id="countdown">3秒后自动跳转</div>
+        
+        <div class="button-group">
+            <a href="deepseek-military.html" class="nav-button primary">
+                💬 立即进入AI对话
+            </a>
+            <a href="index.html" class="nav-button">
+                🏠 返回主页
+            </a>
+        </div>
+        
+        <script>
+            let countdown = 3;
+            const countdownElement = document.getElementById('countdown');
+            
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    countdownElement.textContent = `${countdown}秒后自动跳转`;
+                } else {
+                    countdownElement.textContent = '正在跳转...';
+                    clearInterval(countdownInterval);
+                    
+                    // 自动跳转到DeepSeek界面
+                    setTimeout(() => {
+                        window.location.href = 'deepseek-military.html';
+                    }, 500);
+                }
+            }, 1000);
+            
+            // 如果用户点击按钮，立即跳转
+            document.querySelector('.nav-button.primary').onclick = function() {
+                clearInterval(countdownInterval);
+                window.location.href = 'deepseek-military.html';
+            };
+        </script>
+    </div>
+</body>
+</html>

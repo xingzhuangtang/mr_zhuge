@@ -9,108 +9,129 @@ import asyncio
 from src.ai_agent.model_service import get_model_service
 from src.ai_agent.military_knowledge_base import MilitaryKnowledgeBase
 from src.api.image_api import ImageGenerationService
+from src.ai_agent.video_generation_service import VideoGenerationService
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="多模态军事AI API")
 
+async def get_battle_map_data(query: str) -> Dict[str, Any]:
+    """
+    获取战役地图数据
+    """
+    try:
+        # 这里应该实现真实的地图数据获取逻辑
+        # 目前返回模拟数据
+        battle_map_data = {
+            "battle_name": query,
+            "map_data": {
+                "center": [116.3974, 39.9093],  # 北京坐标
+                "zoom": 8,
+                "layers": [
+                    {
+                        "name": "terrain",
+                        "type": "terrain",
+                        "visible": True
+                    },
+                    {
+                        "name": "battles",
+                        "type": "vector",
+                        "visible": True,
+                        "data": [
+                            {
+                                "position": [116.3974, 39.9093],
+                                "name": f"{query}战役核心区域",
+                                "type": "battle_position"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "battle_info": {
+                "name": query,
+                "description": f"{query}的战役地图数据",
+                "date": "历史时期",
+                "location": "华北地区"
+            }
+        }
+        
+        logger.info(f"获取到战役地图数据: {query}")
+        return battle_map_data
+    except Exception as e:
+        logger.error(f"获取战役地图数据失败: {e}")
+        return {}
+
 class QueryRequest(BaseModel):
     query: str
 
-class MultimodalResponse(BaseModel):
-    text_response: str
-    battle_data: Optional[Dict[str, Any]] = None
-    available_actions: List[str] = []
-    source: str
+class VideoGenerationRequest(BaseModel):
+    text: str
+    steps: Optional[List[Dict[str, Any]]] = None
 
-class BattleMapData(BaseModel):
-    name: str
-    coordinates: Dict[str, float]  # {lat, lng}
-    timeline: List[Dict[str, Any]]
-    terrain_type: str
-    forces: Dict[str, Any]
+# ... (unchanged code) ...
 
-# 全局服务
-model_service = get_model_service()
-knowledge_base = MilitaryKnowledgeBase()
-image_service = ImageGenerationService()
-
-@app.post("/multimodal-analysis")
-async def multimodal_analysis(request: QueryRequest) -> MultimodalResponse:
-    """多模态分析：文本 + 地图数据 + 可操作动作"""
+@app.post("/generate-video")
+async def generate_video(request: VideoGenerationRequest):
+    """生成战役视频"""
     try:
-        query = request.query
+        # 获取模型服务和视频生成服务实例
+        model_service = get_model_service()
+        video_service = VideoGenerationService()
         
-        # 1. 检查是否为已知战役
-        battle_info = knowledge_base.search_battle(query)
-        
-        if battle_info:
-            # 从知识库获取详细信息
-            battle_data = knowledge_base.get_battle_analysis(query)
-            text_response = battle_data.get("analysis", "")
-            source = "knowledge_base"
-            
-            # 获取地图数据
-            map_data = await get_battle_map_data(query)
-            
-            available_actions = ["generate_image", "show_3d_map", "generate_video"]
-            
+        # Prompt optimization using LLM
+        if request.steps:
+            try:
+                # Construct context from deduction steps
+                steps_text = "\n".join([f"Step {i+1}: {step.get('description', '')}" for i, step in enumerate(request.steps)])
+                # Extract specific actions like routes and battles
+                action_highlights = []
+                for step in request.steps:
+                    for action in step.get('actions', []):
+                        if action['type'] in ['path', 'arrow']:
+                             action_highlights.append(f"行军/移动: {action.get('label', '部队移动')}")
+                        elif action['type'] == 'marker':
+                             action_highlights.append(f"地点/交火: {action.get('label', '关键位置')}")
+
+                actions_text = "; ".join(action_highlights[:10]) # Limit to key actions
+
+                llm_prompt = f"""
+                请根据以下战役推演步骤，总结生成一段用于AI视频生成的英文提示词 (Prompt)。
+                这是一部史诗级的战争电影预告片。
+                
+                【重要要求】：
+                1. 必须以推演内容为提纲，涵盖关键的【行军路线】和【交火场景】。
+                2. 描述一个宏大的战争场面，能够概括整个战役的氛围。
+                3. 包含具体的视觉元素（如地形、军队着装、天气、光影）。
+                4. 强调“电影质感”、“高清晰度”、“写实风格”。
+                5. 提示词长度控制在500字符以内。
+                6. 直接返回英文提示词，不要包含其他解释。
+
+                战役步骤：
+                {steps_text}
+                
+                关键行动（行军与交火）：
+                {actions_text}
+                """
+                
+                optimized_prompt = await model_service.generate_text(llm_prompt)
+                # Remove quotes if present
+                optimized_prompt = optimized_prompt.strip('"').strip("'")
+                logger.info(f"Optimized Video Prompt: {optimized_prompt}")
+                video_input_text = optimized_prompt
+            except Exception as e:
+                logger.warning(f"Video prompt optimization failed: {e}. Falling back to raw text.")
+                # Fallback to a simple combination if LLM fails
+                video_input_text = f"Epic war movie scene, {request.text}, detailed terrain, realistic style, cinematic lighting. "
         else:
-            # 调用大模型
-            prompt = f"""
-            请详细分析军事历史问题：{query}。
-            包括：历史背景、战略意义、战术特点、参战方、时间地点、结果影响。
-            """
-            text_response = await model_service.generate_text(prompt)
-            map_data = None
-            source = "ai_model"
-            available_actions = ["generate_image", "search_related_images"]
-        
-        return MultimodalResponse(
-            text_response=text_response,
-            battle_data=map_data,
-            available_actions=available_actions,
-            source=source
-        )
-        
-    except Exception as e:
-        logger.error(f"多模态分析失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+            video_input_text = request.text
 
-async def get_battle_map_data(battle_name: str) -> Optional[BattleMapData]:
-    """获取战役地图数据"""
-    # 这里可以从知识库或外部API获取真实地理坐标
-    battle_coordinates = {
-        "野狐岭之战": {"lat": 41.7833, "lng": 114.3667},
-        "斯大林格勒战役": {"lat": 48.7080, "lng": 44.5133},
-        "诺曼底登陆": {"lat": 49.4144, "lng": -0.8850}
-    }
-    
-    if battle_name in battle_coordinates:
-        return BattleMapData(
-            name=battle_name,
-            coordinates=battle_coordinates[battle_name],
-            timeline=[
-                {"time": "1211年", "event": "蒙古军队集结"},
-                {"time": "1211年8月", "event": "野狐岭决战"}
-            ],
-            terrain_type="mountainous",
-            forces={
-                "mongol": {"troops": 90000, "commander": "成吉思汗"},
-                "jin": {"troops": 450000, "commander": "完颜承裕"}
-            }
-        )
-    return None
-
-@app.post("/generate-battle-image")
-async def generate_battle_image(request: QueryRequest):
-    """生成战役图像"""
-    try:
-        prompt = f"historical battle scene of {request.query}, realistic, detailed, cinematic"
-        image_url = await image_service.generate_image(prompt, style="realistic")
-        return {"image_url": image_url}
+        video_url = await video_service.generate_video_from_text(video_input_text)
+        return {"video_url": video_url}
+    except ValueError as ve:
+        logger.error(f"视频生成参数错误/模型错误: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        logger.error(f"图像生成失败: {e}")
+        logger.error(f"视频生成失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/get-battle-map-data")

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>战役推演系统 - Leaflet版</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #0f1419;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a2029, #2a3441);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .header h1 {
+            color: #ffd700;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1em;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+            margin: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .info-panel {
+            width: 350px;
+            background: rgba(20, 26, 35, 0.95);
+            padding: 20px;
+            border-left: 1px solid rgba(255, 215, 0, 0.3);
+            overflow-y: auto;
+        }
+        
+        .battle-info {
+            margin-bottom: 25px;
+        }
+        
+        .battle-title {
+            color: #ffd700;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .battle-details {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffd700;
+        }
+        
+        .detail-item {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .detail-label {
+            color: #ffd700;
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 60px;
+        }
+        
+        .detail-value {
+            color: #e2e8f0;
+        }
+        
+        .controls {
+            margin-top: 20px;
+        }
+        
+        .control-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+        
+        .control-btn.primary {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #0f1419;
+        }
+        
+        .control-btn.primary:hover {
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+        }
+        
+        .status {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            color: #94a3b8;
+        }
+        
+        .navigation {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .nav-link {
+            display: inline-block;
+            padding: 8px 16px;
+            margin: 5px;
+            background: rgba(255, 215, 0, 0.1);
+            color: #ffd700;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .nav-link:hover {
+            background: rgba(255, 215, 0, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #ffd700;
+            font-size: 1.2em;
+        }
+        
+        .loading-spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255, 215, 0, 0.3);
+            border-top: 3px solid #ffd700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏛️ 战役推演系统</h1>
+        <p>《全面战争》风格 · 实时地图展示</p>
+    </div>
+    
+    <div class="main-content">
+        <div class="map-container">
+            <div id="map">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    正在加载地图...
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="battle-info">
+                <div class="battle-title">赤壁之战</div>
+                <div class="battle-details">
+                    <div class="detail-item">
+                        <span class="detail-label">时间:</span>
+                        <span class="detail-value">208年</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">地点:</span>
+                        <span class="detail-value">长江赤壁</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">指挥官:</span>
+                        <span class="detail-value">曹操 vs 周瑜、刘备</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">结果:</span>
+                        <span class="detail-value">孙刘联军胜利</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="control-btn primary" onclick="startSimulation()">▶ 开始推演</button>
+                <button class="control-btn" onclick="resetSimulation()">↺ 重置</button>
+                <button class="control-btn" onclick="setView('overview')">📋 全景</button>
+                <button class="control-btn" onclick="setView('detail')">🔍 细节</button>
+            </div>
+            
+            <div class="status" id="status">
+                系统就绪，等待开始推演...
+            </div>
+            
+            <div class="navigation">
+                <a href="deepseek-military.html" class="nav-link">💬 AI对话</a>
+                <a href="battle-visualization-deepseek.html" class="nav-link">🎮 3D重现</a>
+                <a href="index.html" class="nav-link">🏠 主页</a>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let battleLayer;
+        
+        // 初始化地图
+        function initMap() {
+            try {
+                map = L.map('map').setView([29.7, 113.9], 10);
+                
+                // 添加地图图层
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+                
+                // 添加战役标记
+                addBattleMarkers();
+                
+                document.getElementById('status').innerHTML = '地图加载完成，系统就绪！';
+                console.log('✅ Leaflet地图初始化成功');
+                
+            } catch (error) {
+                console.error('地图初始化失败:', error);
+                document.getElementById('status').innerHTML = '地图加载失败，请检查网络连接';
+            }
+        }
+        
+        // 添加战役标记
+        function addBattleMarkers() {
+            // 曹操军位置
+            const caoCao = L.marker([29.75, 113.85], {
+                icon: L.divIcon({
+                    className: 'custom-marker caocao',
+                    html: '曹操军',
+                    iconSize: [80, 30],
+                    iconAnchor: [40, 15]
+                })
+            }).addTo(map).bindPopup('<b>曹操军</b><br>80万大军');
+            
+            // 孙刘联军位置
+            const sunLiu = L.marker([29.65, 113.95], {
+                icon: L.divIcon({
+                    className: 'custom-marker sunliu',
+                    html: '孙刘联军',
+                    iconSize: [80, 30],
+                    iconAnchor: [40, 15]
+                })
+            }).addTo(map).bindPopup('<b>孙刘联军</b><br>约5万人');
+            
+            // 火攻位置
+            const fireAttack = L.marker([29.7, 113.9], {
+                icon: L.divIcon({
+                    className: 'custom-marker fire',
+                    html: '🔥 火攻',
+                    iconSize: [80, 30],
+                    iconAnchor: [40, 15]
+                })
+            }).addTo(map).bindPopup('<b>火攻位置</b><br>连环船燃烧');
+        }
+        
+        // 开始推演
+        function startSimulation() {
+            const status = document.getElementById('status');
+            status.innerHTML = '推演进行中...';
+            
+            // 模拟推演过程
+            let step = 0;
+            const interval = setInterval(() => {
+                step++;
+                switch(step) {
+                    case 1:
+                        status.innerHTML = '第一步：军队部署...';
+                        break;
+                    case 2:
+                        status.innerHTML = '第二步：火船准备...';
+                        break;
+                    case 3:
+                        status.innerHTML = '第三步：东南风起...';
+                        break;
+                    case 4:
+                        status.innerHTML = '第四步：火攻开始！';
+                        break;
+                    case 5:
+                        status.innerHTML = '第五步：曹操败退...';
+                        break;
+                    default:
+                        clearInterval(interval);
+                        status.innerHTML = '推演完成！';
+                }
+            }, 2000);
+        }
+        
+        // 重置推演
+        function resetSimulation() {
+            document.getElementById('status').innerHTML = '系统重置，等待开始推演...';
+            if (map) {
+                map.setView([29.7, 113.9], 10);
+            }
+        }
+        
+        // 设置视角
+        function setView(mode) {
+            if (!map) return;
+            
+            switch(mode) {
+                case 'overview':
+                    map.setView([29.7, 113.9], 8);
+                    break;
+                case 'detail':
+                    map.setView([29.7, 113.9], 12);
+                    break;
+            }
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initMap, 1000); // 延迟1秒加载地图
+        });
+    </script>
+</body>
+</html>

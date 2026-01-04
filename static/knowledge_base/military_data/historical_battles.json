@@ -1,0 +1,547 @@
+{
+  "battles": {
+    "ancient_battles": {
+      "chibi_208": {
+        "battle_id": "chibi_208",
+        "name": "赤壁之战",
+        "historical_period": "ancient",
+        "date": "208-12",
+        "year": 208,
+        "location": {
+          "lat": 29.7,
+          "lon": 113.9,
+          "historical_name": "赤壁",
+          "modern_name": "湖北赤壁市",
+          "terrain_type": "river_bank"
+        },
+        "participants": [
+          {
+            "force_id": "cao_cao",
+            "name": "曹操军",
+            "commander": "曹操",
+            "composition": {
+              "infantry": 150000,
+              "cavalry": 30000,
+              "archers": 20000,
+              "navy": 20000
+            },
+            "unit_types": [
+              {
+                "type": "legionnaire",
+                "count": 80000,
+                "formation": "linear_formation"
+              },
+              {
+                "type": "archer",
+                "count": 20000,
+                "formation": "volley"
+              },
+              {
+                "type": "heavy_cavalry",
+                "count": 30000,
+                "formation": "wedge"
+              }
+            ],
+            "initial_position": [113.88, 29.71],
+            "tactics": ["fire_attack_preparation", "naval_supremacy"],
+            "morale": 8,
+            "equipment_quality": "high",
+            "logistics": "excellent"
+          },
+          {
+            "force_id": "sun_liu",
+            "name": "孙刘联军",
+            "commander": "周瑜、刘备",
+            "composition": {
+              "infantry": 30000,
+              "cavalry": 5000,
+              "navy": 15000
+            },
+            "unit_types": [
+              {
+                "type": "hoplite",
+                "count": 15000,
+                "formation": "phalanx"
+              },
+              {
+                "type": "archer",
+                "count": 8000,
+                "formation": "volley"
+              },
+              {
+                "type": "horse_archer",
+                "count": 5000,
+                "formation": "skirmish_line"
+              }
+            ],
+            "initial_position": [113.92, 29.75],
+            "tactics": ["fire_attack", "alliance_warfare"],
+            "morale": 9,
+            "equipment_quality": "medium",
+            "logistics": "moderate"
+          }
+        ],
+        "battle_timeline": [
+          {
+            "event_id": "deployment",
+            "timestamp": "208-12-01T00:00:00",
+            "event_type": "deployment",
+            "description": "曹操军队集结于长江北岸",
+            "tactical_action": "army_positioning",
+            "location": [113.88, 29.71],
+            "participants": ["cao_cao", "sun_liu"],
+            "effects": {
+              "fire": false,
+              "weather": "clear",
+              "wind": "variable",
+              "terrain_advantage": "neutral"
+            },
+            "unit_animations": {
+              "cao_cao": ["formation_setup", "naval_preparation"],
+              "sun_liu": ["defensive_formation", "alliance_coordination"]
+            }
+          },
+          {
+            "event_id": "fire_attack",
+            "timestamp": "208-12-07T20:00:00",
+            "event_type": "decisive_maneuver",
+            "description": "东南风起，孙刘联军发起火攻",
+            "tactical_action": "fire_attack",
+            "location": [113.90, 29.73],
+            "participants": ["sun_liu"],
+            "effects": {
+              "fire": true,
+              "weather": "windy",
+              "wind": "southeast",
+              "terrain_advantage": "fire_advantage"
+            },
+            "unit_animations": {
+              "sun_liu": ["fire_attack", "fire_ship_assault", "wind_utilization"]
+            },
+            "special_effects": {
+              "fire_ships": true,
+              "wind_direction": "southeast",
+              "burning_duration": 7200
+            }
+          },
+          {
+            "event_id": "retreat",
+            "timestamp": "208-12-08T10:00:00",
+            "event_type": "retreat",
+            "description": "曹操大败，开始全面撤退",
+            "tactical_action": "organized_retreat",
+            "location": [113.80, 29.80],
+            "participants": ["cao_cao"],
+            "effects": {
+              "fire": false,
+              "weather": "clear",
+              "wind": "variable",
+              "terrain_advantage": "retreat_route"
+            },
+            "unit_animations": {
+              "cao_cao": ["organized_retreat", "covering_fire", "strategic_withdrawal"]
+            },
+            "casualties": {
+              "cao_cao": 0.6,
+              "sun_liu": 0.2
+            }
+          }
+        ],
+        "outcome": {
+          "victor": "sun_liu",
+          "casualties": {
+            "cao_cao": "150000",
+            "sun_liu": "10000"
+          },
+          "strategic_impact": "奠定了三国鼎立的基础，曹操南征失败",
+          "historical_significance": "三国时期最重要的战役之一",
+          "tactical_lessons": [
+            "天气条件对战术的影响",
+            "火攻战术的运用",
+            "联盟作战的优势",
+            "舰队配合陆战的重要性"
+          ]
+        }
+      },
+      "marathon_490bc": {
+        "battle_id": "marathon_490bc",
+        "name": "马拉松战役",
+        "historical_period": "ancient",
+        "date": "490-09",
+        "year": -490,
+        "location": {
+          "lat": 38.1,
+          "lon": 23.9,
+          "historical_name": "马拉松平原",
+          "modern_name": "希腊马拉松",
+          "terrain_type": "plains"
+        },
+        "participants": [
+          {
+            "force_id": "persian_empire",
+            "name": "波斯帝国军",
+            "commander": "大流士一世",
+            "composition": {
+              "infantry": 25000,
+              "cavalry": 1000,
+              "archers": 8000
+            },
+            "unit_types": [
+              {
+                "type": "archer",
+                "count": 8000,
+                "formation": "volley"
+              },
+              {
+                "type": "legionnaire",
+                "count": 15000,
+                "formation": "linear_formation"
+              },
+              {
+                "type": "heavy_cavalry",
+                "count": 1000,
+                "formation": "wedge"
+              }
+            ],
+            "initial_position": [23.85, 38.05],
+            "tactics": ["archer_volley", "cavalry_flanking"],
+            "morale": 7,
+            "equipment_quality": "high",
+            "logistics": "excellent"
+          },
+          {
+            "force_id": "greek_city_states",
+            "name": "希腊城邦联军",
+            "commander": "米太亚德",
+            "composition": {
+              "infantry": 11000,
+              "cavalry": 0,
+              "archers": 0
+            },
+            "unit_types": [
+              {
+                "type": "hoplite",
+                "count": 10000,
+                "formation": "phalanx"
+              },
+              {
+                "type": "peltast",
+                "count": 1000,
+                "formation": "skirmish_line"
+              }
+            ],
+            "initial_position": [23.95, 38.15],
+            "tactics": ["phalanx_charge", "hoplite_superiority"],
+            "morale": 9,
+            "equipment_quality": "medium",
+            "logistics": "moderate"
+          }
+        ],
+        "outcome": {
+          "victor": "greek_city_states",
+          "casualties": {
+            "persian_empire": "6400",
+            "greek_city_states": "192"
+          },
+          "strategic_impact": "阻止了波斯帝国的进一步西进，保护了希腊城邦独立",
+          "historical_significance": "奠定了希腊文明的基础",
+          "tactical_lessons": [
+            "重装步兵方阵的有效性",
+            "弓箭手vs重装步兵的对抗",
+            "地形对战术的影响",
+            "士气对战斗结果的决定作用"
+          ]
+        }
+      }
+    },
+    "medieval_battles": {
+      "hastings_1066": {
+        "battle_id": "hastings_1066",
+        "name": "黑斯廷斯战役",
+        "historical_period": "medieval",
+        "date": "1066-10",
+        "year": 1066,
+        "location": {
+          "lat": 50.9,
+          "lon": 0.5,
+          "historical_name": "黑斯廷斯",
+          "modern_name": "英国东萨塞克斯郡",
+          "terrain_type": "hill_plains"
+        },
+        "participants": [
+          {
+            "force_id": "anglo_saxons",
+            "name": "盎格鲁-撒克逊军",
+            "commander": "哈罗德二世",
+            "composition": {
+              "heavy_infantry": 7000,
+              "cavalry": 1000,
+              "archers": 0
+            },
+            "unit_types": [
+              {
+                "type": "knight",
+                "count": 1000,
+                "formation": "heavy_charge"
+              },
+              {
+                "type": "man_at_arms",
+                "count": 5000,
+                "formation": "shield_wall"
+              },
+              {
+                "type": "peasant_militia",
+                "count": 2000,
+                "formation": "defensive_circle"
+              }
+            ],
+            "initial_position": [0.51, 50.92],
+            "tactics": ["shield_wall", "defensive_position"],
+            "morale": 8,
+            "equipment_quality": "medium",
+            "logistics": "moderate"
+          },
+          {
+            "force_id": "normans",
+            "name": "诺曼军队",
+            "commander": "威廉征服者",
+            "composition": {
+              "heavy_infantry": 8000,
+              "cavalry": 2000,
+              "archers": 1000
+            },
+            "unit_types": [
+              {
+                "type": "knight",
+                "count": 2000,
+                "formation": "cavalry_wedge"
+              },
+              {
+                "type": "man_at_arms",
+                "count": 6000,
+                "formation": "formation_line"
+              },
+              {
+                "type": "crossbowman",
+                "count": 1000,
+                "formation": "volley_fire"
+              }
+            ],
+            "initial_position": [0.49, 50.88],
+            "tactics": ["cavalry_assault", "combined_arms"],
+            "morale": 8,
+            "equipment_quality": "high",
+            "logistics": "good"
+          }
+        ],
+        "outcome": {
+          "victor": "normans",
+          "casualties": {
+            "normans": "2000",
+            "anglo_saxons": "4000"
+          },
+          "strategic_impact": "结束了盎格鲁-撒克逊王朝，开启了诺曼统治时期",
+          "historical_significance": "彻底改变了英国历史进程",
+          "tactical_lessons": [
+            "地形优势的重要性",
+            "重装骑兵vs盾牌墙的对抗",
+            "假退战术的有效性",
+            "领导层损失对战斗的决定性影响"
+          ]
+        }
+      }
+    },
+    "modern_battles": {
+      "waterloo_1815": {
+        "battle_id": "waterloo_1815",
+        "name": "滑铁卢战役",
+        "historical_period": "modern",
+        "date": "1815-06",
+        "year": 1815,
+        "location": {
+          "lat": 50.68,
+          "lon": 4.41,
+          "historical_name": "滑铁卢",
+          "modern_name": "比利时滑铁卢",
+          "terrain_type": "rolling_hills"
+        },
+        "participants": [
+          {
+            "force_id": "napoleonic_army",
+            "name": "拿破仑帝国军",
+            "commander": "拿破仑一世",
+            "composition": {
+              "line_infantry": 49000,
+              "cavalry": 15000,
+              "artillery": 3500
+            },
+            "unit_types": [
+              {
+                "type": "line_infantry",
+                "count": 35000,
+                "formation": "linear_formation"
+              },
+              {
+                "type": "cavalry",
+                "count": 15000,
+                "formation": "cavalry_column"
+              },
+              {
+                "type": "field_artillery",
+                "count": 200,
+                "formation": "artillery_battery"
+              }
+            ],
+            "initial_position": [4.40, 50.67],
+            "tactics": ["grand_tactics", "cavalry_assault"],
+            "morale": 7,
+            "equipment_quality": "high",
+            "logistics": "good"
+          },
+          {
+            "force_id": "coalition_army",
+            "name": "第七次反法同盟军",
+            "commander": "威灵顿公爵",
+            "composition": {
+              "line_infantry": 67000,
+              "cavalry": 12000,
+              "artillery": 6000
+            },
+            "unit_types": [
+              {
+                "type": "line_infantry",
+                "count": 50000,
+                "formation": "defensive_formation"
+              },
+              {
+                "type": "cavalry",
+                "count": 12000,
+                "formation": "reserve_cavalry"
+              },
+              {
+                "type": "field_artillery",
+                "count": 150,
+                "formation": "artillery_defense"
+              }
+            ],
+            "initial_position": [4.42, 50.69],
+            "tactics": ["defensive_position", "combined_arms"],
+            "morale": 8,
+            "equipment_quality": "high",
+            "logistics": "excellent"
+          }
+        ],
+        "outcome": {
+          "victor": "coalition_army",
+          "casualties": {
+            "napoleonic_army": "65000",
+            "coalition_army": "23000"
+          },
+          "strategic_impact": "拿破仑彻底失败，欧洲进入新秩序",
+          "historical_significance": "结束了拿破仑时代",
+          "tactical_lessons": [
+            "线列步兵vs新式战术",
+            "大规模火炮的作用",
+            "骑兵机动性的重要性",
+            "联军协同作战的优势"
+          ]
+        }
+      },
+      "gettysburg_1863": {
+        "battle_id": "gettysburg_1863",
+        "name": "葛底斯堡战役",
+        "historical_period": "modern",
+        "date": "1863-07",
+        "year": 1863,
+        "location": {
+          "lat": 39.83,
+          "lon": -77.23,
+          "historical_name": "葛底斯堡",
+          "modern_name": "美国宾夕法尼亚州",
+          "terrain_type": "hills_and_plains"
+        },
+        "participants": [
+          {
+            "force_id": "confederate_army",
+            "name": "美利坚联盟国军",
+            "commander": "罗伯特·李将军",
+            "composition": {
+              "infantry": 75000,
+              "cavalry": 7000,
+              "artillery": 300
+            },
+            "unit_types": [
+              {
+                "type": "line_infantry",
+                "count": 60000,
+                "formation": "battle_line"
+              },
+              {
+                "type": "cavalry",
+                "count": 7000,
+                "formation": "cavalry_command"
+              },
+              {
+                "type": "field_artillery",
+                "count": 300,
+                "formation": "artillery_batteries"
+              }
+            ],
+            "initial_position": [-77.25, 39.80],
+            "tactics": ["offensive_operations", "cavalry_maneuver"],
+            "morale": 8,
+            "equipment_quality": "high",
+            "logistics": "moderate"
+          },
+          {
+            "force_id": "union_army",
+            "name": "美利坚合众国军",
+            "commander": "乔治·米德将军",
+            "composition": {
+              "infantry": 83000,
+              "cavalry": 10000,
+              "artillery": 370
+            },
+            "unit_types": [
+              {
+                "type": "line_infantry",
+                "count": 70000,
+                "formation": "defensive_line"
+              },
+              {
+                "type": "cavalry",
+                "count": 10000,
+                "formation": "cavalry_reserve"
+              },
+              {
+                "type": "field_artillery",
+                "count": 370,
+                "formation": "artillery_defense"
+              }
+            ],
+            "initial_position": [-77.22, 39.85],
+            "tactics": ["defensive_positioning", "artillery_superiority"],
+            "morale": 7,
+            "equipment_quality": "high",
+            "logistics": "good"
+          }
+        ],
+        "outcome": {
+          "victor": "union_army",
+          "casualties": {
+            "confederate_army": "28000",
+            "union_army": "23000"
+          },
+          "strategic_impact": "联邦军取得决定性胜利，战争转折点",
+          "historical_significance": "美国内战的转折点",
+          "tactical_lessons": [
+            "防御阵地的重要性",
+            "大规模炮兵的作用",
+            "骑兵机动性的运用",
+            "士气对大规模战斗的影响"
+          ]
+        }
+      }
+    }
+  }
+}

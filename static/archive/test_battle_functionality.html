@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>战役功能测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>战役播放功能测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 服务器连接测试</h2>
+        <div id="server-test">测试中...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 战役数据加载测试</h2>
+        <div id="data-test">测试中...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. JavaScript模块测试</h2>
+        <div id="js-test">测试中...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Cesium加载测试</h2>
+        <div id="cesium-test">测试中...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. 动画系统测试</h2>
+        <div id="animation-test">测试中...</div>
+    </div>
+
+    <script>
+        // 测试服务器连接
+        async function testServerConnection() {
+            try {
+                const response = await fetch('http://localhost:8000/game-battle');
+                if (response.ok) {
+                    document.getElementById('server-test').innerHTML = '<span class="success">✅ 服务器连接正常</span>';
+                } else {
+                    document.getElementById('server-test').innerHTML = '<span class="error">❌ 服务器响应异常</span>';
+                }
+            } catch (error) {
+                document.getElementById('server-test').innerHTML = '<span class="error">❌ 服务器连接失败: ' + error.message + '</span>';
+            }
+        }
+
+        // 测试战役数据
+        async function testBattleData() {
+            try {
+                const response = await fetch('/static/knowledge_base/military_data/historical_battles.json');
+                const data = await response.json();
+                if (data.battles && data.battles.ancient_battles && data.battles.ancient_battles.chibi_208) {
+                    document.getElementById('data-test').innerHTML = '<span class="success">✅ 战役数据加载成功</span>';
+                } else {
+                    document.getElementById('data-test').innerHTML = '<span class="error">❌ 战役数据格式错误</span>';
+                }
+            } catch (error) {
+                document.getElementById('data-test').innerHTML = '<span class="error">❌ 战役数据加载失败: ' + error.message + '</span>';
+            }
+        }
+
+        // 测试JavaScript模块
+        function testJavaScriptModules() {
+            const tests = [];
+            
+            // 测试队形动画系统
+            if (typeof FormationAnimationSystem !== 'undefined') {
+                tests.push('✅ FormationAnimationSystem');
+            } else {
+                tests.push('❌ FormationAnimationSystem');
+            }
+            
+            // 测试其他模块
+            const modules = ['UnitSystem', 'TacticalAnimationSystem', 'AudioSystem'];
+            modules.forEach(module => {
+                if (typeof window[module] !== 'undefined') {
+                    tests.push('✅ ' + module);
+                } else {
+                    tests.push('❌ ' + module);
+                }
+            });
+            
+            document.getElementById('js-test').innerHTML = tests.join('<br>');
+        }
+
+        // 测试Cesium
+        function testCesium() {
+            if (typeof Cesium !== 'undefined') {
+                document.getElementById('cesium-test').innerHTML = '<span class="success">✅ Cesium加载成功</span>';
+            } else {
+                document.getElementById('cesium-test').innerHTML = '<span class="error">❌ Cesium未加载</span>';
+            }
+        }
+
+        // 测试动画系统
+        function testAnimationSystem() {
+            try {
+                // 检查是否有动画相关的函数
+                const hasAnimations = typeof window.startBattleAnimation !== 'undefined' || 
+                                   typeof window.FormationAnimationSystem !== 'undefined';
+                
+                if (hasAnimations) {
+                    document.getElementById('animation-test').innerHTML = '<span class="success">✅ 动画系统可用</span>';
+                } else {
+                    document.getElementById('animation-test').innerHTML = '<span class="error">❌ 动画系统不可用</span>';
+                }
+            } catch (error) {
+                document.getElementById('animation-test').innerHTML = '<span class="error">❌ 动画系统测试失败: ' + error.message + '</span>';
+            }
+        }
+
+        // 运行所有测试
+        async function runAllTests() {
+            await testServerConnection();
+            await testBattleData();
+            
+            // 延迟测试，等待模块加载
+            setTimeout(() => {
+                testJavaScriptModules();
+                testCesium();
+                testAnimationSystem();
+            }, 2000);
+        }
+
+        // 页面加载完成后运行测试
+        window.addEventListener('load', runAllTests);
+    </script>
+</body>
+</html>

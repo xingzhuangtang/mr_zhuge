@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>战役可视化 - {{battleName}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #0a0a0a;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* 主容器：上下布局 */
+        .main-container {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        /* 可拖拽窗口的基础样式 */
+        .resizable-window {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(20, 20, 20, 0.95));
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            z-index: 100;
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .resizable-window:hover {
+            box-shadow: 0 12px 48px rgba(255, 215, 0, 0.2);
+            border-color: rgba(255, 215, 0, 0.6);
+        }
+        
+        /* 拖拽手柄 */
+        .window-header {
+            background: linear-gradient(90deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+            padding: 8px 15px;
+            border-radius: 13px 13px 0 0;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .window-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        .window-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .control-btn-mini {
+            width: 20px;
+            height: 20px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .minimize-btn {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .maximize-btn {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .close-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .control-btn-mini:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 缩放手柄 */
+        .resize-handle {
+            position: absolute;
+            background: rgba(255, 215, 0, 0.6);
+        }
+        
+        .resize-handle.se {
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            cursor: se-resize;
+            border-radius: 0 0 13px 0;
+        }
+        
+        .resize-handle.e {
+            bottom: 0;
+            right: 0;
+            width: 5px;
+            height: calc(100% - 20px);
+            cursor: e-resize;
+            border-radius: 0 0 0 0;
+        }
+        
+        .resize-handle.s {
+            bottom: 0;
+            right: 20px;
+            width: calc(100% - 20px);
+            height: 5px;
+            cursor: s-resize;
+            border-radius: 0 0 0 13px;
+        }
+        
+        /* AI文字输出窗口 - 上方 */
+        .ai-chat-window {
+            top: 20px;
+            left: 20px;
+            width: 45%;
+            height: 60%;
+            z-index: 200;
+        }
+        
+        .ai-chat-content {
+            padding: 20px;
+            height: calc(100% - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .ai-message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 12px;
+            animation: fadeIn 0.4s ease;
+            line-height: 1.6;
+        }
+        
+        .ai-system-message {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.8), rgba(41, 128, 185, 0.8));
+            color: white;
+            border-left: 4px solid #3498db;
+        }
+        
+        .ai-user-message {
+            background: linear-gradient(135deg, rgba(155, 89, 182, 0.8), rgba(142, 68, 173, 0.8));
+            color: white;
+            margin-left: 20px;
+            border-left: 4px solid #9b59b6;
+        }
+        
+        .ai-assistant-message {
+            background: linear-gradient(135deg, rgba(46, 204, 113, 0.8), rgba(39, 174, 96, 0.8));
+            color: white;
+            border-left: 4px solid #2ecc71;
+        }
+        
+        .ai-thinking-message {
+            background: linear-gradient(135deg, rgba(241, 196, 15, 0.8), rgba(243, 156, 18, 0.8));
+            color: #2c3e50;
+            border-left: 4px solid #f39c12;
+            font-style: italic;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .ai-input-container {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .ai-input-container input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .ai-input-container input::placeholder {
+            color: #aaa;
+        }
+        
+        .ai-input-container input:focus {
+            outline: none;
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+        
+        .ai-send-btn {
+            padding: 12px 20px;
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(155, 89, 182, 0.6);
+        }
+        
+        /* 控制面板窗口 - 右上 */
+        .control-window {
+            top: 20px;
+            right: 20px;
+            width: 25%;
+            height: 35%;
+            z-index: 150;
+        }
+        
+        .control-content {
+            padding: 20px;
+            height: calc(100% - 40px);
+            overflow-y: auto;
+        }
+        
+        .battle-info {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .battle-name {
+            font-size: 1.8em;
+            color: #ffd700;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .battle-year {
+            color: #87ceeb;
+            font-size: 1.1em;
+        }
+        
+        .controls-grid {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .main-control-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        }
+        
+        .main-control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 107, 107, 0.5);
+        }
+        
+        .main-control-btn.playing {
+            background: linear-gradient(45deg, #10ac84, #00d2d3);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        .status-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .status-item {
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        
+        .status-label {
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        /* 地图窗口 - 下方，占据大部分空间 */
+        .map-window {
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 35%;
+            z-index: 50;
+            min-height: 300px;
+        }
+        
+        .map-content {
+            height: calc(100% - 40px);
+            border-radius: 0 0 13px 13px;
+            overflow: hidden;
+        }
+        
+        #cesiumContainer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* 载入画面 */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            border-radius: 13px;
+        }
+        
+        .loading-content {
+            text-align: center;
+            color: #ffd700;
+        }
+        
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 6px solid rgba(255, 215, 0, 0.2);
+            border-top: 6px solid #ffd700;
+            border-radius: 50%;
+            animation: spin 1.2s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 错误提示 */
+        .error-message {
+            background: rgba(231, 76, 60, 0.2);
+            border: 2px solid #e74c3c;
+            color: #e74c3c;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 1200px) {
+            .ai-chat-window {
+                width: 50%;
+                height: 55%;
+            }
+            
+            .control-window {
+                width: 30%;
+                height: 40%;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .ai-chat-window,
+            .control-window {
+                width: 90%;
+                height: 40%;
+                left: 5%;
+                right: 5%;
+            }
+            
+            .ai-chat-window {
+                top: 10px;
+            }
+            
+            .control-window {
+                top: calc(45% + 20px);
+            }
+            
+            .map-window {
+                height: 45%;
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- AI文字输出窗口 -->
+        <div class="resizable-window ai-chat-window" id="aiChatWindow">
+            <div class="window-header">
+                <span class="window-title">🤖 战役AI助手</span>
+                <div class="window-controls">
+                    <button class="control-btn-mini minimize-btn" onclick="minimizeWindow('aiChatWindow')">−</button>
+                    <button class="control-btn-mini maximize-btn" onclick="maximizeWindow('aiChatWindow')">□</button>
+                    <button class="control-btn-mini close-btn" onclick="hideWindow('aiChatWindow')">×</button>
+                </div>
+            </div>
+            <div class="ai-chat-content">
+                <div class="ai-messages" id="aiMessages">
+                    <div class="ai-message ai-system-message">
+                        🎮 欢迎来到战役可视化系统！<br><br>
+                        我是您的专业军事历史AI顾问，正在为您详细讲解这场著名战役。<br><br>
+                        💡 <strong>系统特点：</strong><br>
+                        • 实时分析战役战术和战略<br>
+                        • 解答军事历史问题<br>
+                        • 互动式学习体验<br><br>
+                        请输入您的问题，我将为您提供专业的军事历史分析！
+                    </div>
+                </div>
+                <div class="ai-input-container">
+                    <input type="text" id="aiInput" placeholder="询问关于这场战役的问题..." autocomplete="off" />
+                    <button class="ai-send-btn" onclick="sendAIMessage()">发送</button>
+                </div>
+            </div>
+            <div class="resize-handle se"></div>
+            <div class="resize-handle e"></div>
+            <div class="resize-handle s"></div>
+        </div>
+        
+        <!-- 控制面板窗口 -->
+        <div class="resizable-window control-window" id="controlWindow">
+            <div class="window-header">
+                <span class="window-title">🎮 播放控制</span>
+                <div class="window-controls">
+                    <button class="control-btn-mini minimize-btn" onclick="minimizeWindow('controlWindow')">−</button>
+                    <button class="control-btn-mini maximize-btn" onclick="maximizeWindow('controlWindow')">□</button>
+                    <button class="control-btn-mini close-btn" onclick="hideWindow('controlWindow')">×</button>
+                </div>
+            </div>
+            <div class="control-content">
+                <div class="battle-info">
+                    <div class="battle-name" id="battleName">战役可视化</div>
+                    <div class="battle-year" id="battleYear">正在加载...</div>
+                </div>
+                
+                <div class="controls-grid">
+                    <button class="main-control-btn" id="playBtn" onclick="togglePlay()">▶ 开始播放</button>
+                    <button class="main-control-btn" onclick="resetBattle()">↺ 重置</button>
+                    <button class="main-control-btn" onclick="setCameraView('overview')">📋 全景观察</button>
+                    <button class="main-control-btn" onclick="setCameraView('tactical')">⚔️ 战术视角</button>
+                    <button class="main-control-btn" onclick="setCameraView('aerial')">✈️ 空中俯视</button>
+                </div>
+                
+                <div class="status-display">
+                    <div class="status-item">
+                        <span class="status-label">播放状态:</span>
+                        <span id="playStatus">未开始</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">当前事件:</span>
+                        <span id="currentEvent">等待开始</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">地图加载:</span>
+                        <span id="mapStatus">加载中...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="resize-handle se"></div>
+            <div class="resize-handle e"></div>
+            <div class="resize-handle s"></div>
+        </div>
+        
+        <!-- 地图窗口 - 占据下方大部分空间 -->
+        <div class="resizable-window map-window" id="mapWindow">
+            <div class="window-header">
+                <span class="window-title">🗺️ 3D战役地图</span>
+                <div class="window-controls">
+                    <button class="control-btn-mini minimize-btn" onclick="minimizeWindow('mapWindow')">−</button>
+                    <button class="control-btn-mini maximize-btn" onclick="maximizeWindow('mapWindow')">□</button>
+                    <button class="control-btn-mini close-btn" onclick="hideWindow('mapWindow')">×</button>
+                </div>
+            </div>
+            <div class="map-content">
+                <div id="cesiumContainer"></div>
+                
+                <!-- 载入画面 -->
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
+                        <div style="font-size: 18px; margin-top: 15px;">正在加载战役地图...</div>
+                        <div style="font-size: 14px; color: #87ceeb; margin-top: 10px;">请稍候，即将为您呈现震撼的3D战役重现</div>
+                    </div>
+                </div>
+            </div>
+            <div class="resize-handle se"></div>
+            <div class="resize-handle e"></div>
+            <div class="resize-handle s"></div>
+        </div>
+    </div>
+
+    <!-- 加载Cesium库 -->
+    <script src="cesium/Cesium.js"></script>
+    
+    <script>
+        // 全局变量
+        let viewer;
+        let isPlaying = false;
+        let currentBattleData = null;
+        let animationTime = 0;
+        let processedEvents = new Set();
+        let aiSystem = null;
+        let windowPositions = {};
+        let windowSizes = {};
+        
+        // 战役数据
+        const battlesDatabase = {
+            'chibi_208': {
+                name: '赤壁之战',
+                year: 208,
+                period: 'ancient',
+                location: { lat: 29.7, lon: 113.9 },
+                description: '208年冬，孙权、刘备联军在长江赤壁地区大败曹操，奠定了三国鼎立的基础。这是中国古代最著名的水战之一，也是火攻战术的经典范例。',
+                participants: [
+                    { name: '曹操军', commander: '曹操', color: '#ff4444' },
+                    { name: '孙刘联军', commander: '周瑜、刘备', color: '#4444ff' }
+                ],
+                events: [
+                    { time: 5, description: '曹操军队集结于长江北岸，准备渡江作战', type: 'deployment' },
+                    { time: 15, description: '东南风起，孙刘联军发起火攻，火烧曹操连环船', type: 'fire_attack' },
+                    { time: 25, description: '曹操大败，开始全面撤退，奠定了三国鼎立的基础', type: 'retreat' }
+                ]
+            },
+            'marathon_490bc': {
+                name: '马拉松战役',
+                year: -490,
+                period: 'ancient',
+                location: { lat: 38.1, lon: 23.9 },
+                description: '前490年，希腊城邦联军在马拉松平原击败波斯入侵军，标志着希腊文明的胜利。这一战确立了重装步兵方阵的战术优势。',
+                participants: [
+                    { name: '波斯军', commander: '达提斯', color: '#ffaa44' },
+                    { name: '希腊联军', commander: '米太亚德', color: '#44aaff' }
+                ],
+                events: [
+                    { time: 5, description: '波斯军队登陆马拉松平原，列阵准备', type: 'deployment' },
+                    { time: 15, description: '希腊重装步兵发起冲锋，波斯弓箭手溃败', type: 'assault' },
+                    { time: 25, description: '波斯军大败，希腊获得决定性胜利', type: 'victory' }
+                ]
+            },
+            'hastings_1066': {
+                name: '黑斯廷斯战役',
+                year: 1066,
+                period: 'medieval',
+                location: { lat: 50.9, lon: 0.5 },
+                description: '1066年10月14日，诺曼底公爵威廉击败英格兰国王哈罗德二世，征服英格兰。这一战改变了英国的历史进程。',
+                participants: [
+                    { name: '盎格鲁-撒克逊军', commander: '哈罗德二世', color: '#44ff44' },
+                    { name: '诺曼军', commander: '威廉征服者', color: '#ff8844' }
+                ],
+                events: [
+                    { time: 5, description: '两军在黑斯廷斯相遇，分别列阵准备决战', type: 'deployment' },
+                    { time: 15, description: '诺曼骑兵发起冲锋，冲击盎格鲁-撒克逊盾牌防线', type: 'cavalry_charge' },
+                    { time: 25, description: '哈罗德战死，英格兰投降，诺曼征服开始', type: 'victory' }
+                ]
+            },
+            'waterloo_1815': {
+                name: '滑铁卢战役',
+                year: 1815,
+                period: 'modern',
+                location: { lat: 50.68, lon: 4.41 },
+                description: '1815年6月18日，威灵顿公爵与布吕歇尔将军在滑铁卢击败拿破仑，结束了拿破仑时代。这是近代军事史上最著名的决战。',
+                participants: [
+                    { name: '拿破仑帝国军', commander: '拿破仑一世', color: '#ff4444' },
+                    { name: '反法同盟军', commander: '威灵顿公爵', color: '#4444ff' }
+                ],
+                events: [
+                    { time: 5, description: '拿破仑准备发动最后进攻，部署大炮阵地', type: 'deployment' },
+                    { time: 15, description: '法军步兵发起猛攻，反法同盟军坚守阵地', type: 'artillery_barrage' },
+                    { time: 25, description: '普鲁士援军到达，拿破仑最终败北', type: 'defeat' }
+                ]
+            },
+            'gettysburg_1863': {
+                name: '葛底斯堡战役',
+                year: 1863,
+                period: 'modern',
+                location: { lat: 39.8, lon: -77.2 },
+                description: '1863年7月1-3日，葛底斯堡战役是美国内战的转折点。联邦军击败南方军，阻止了南方独立的企图。',
+                participants: [
+                    { name: '南方军', commander: '罗伯特·李', color: '#ff8844' },
+                    { name: '联邦军', commander: '乔治·米德', color: '#4488ff' }
+                ],
+                events: [
+                    { time: 5, description: '两军在葛底斯堡遭遇，争夺战略高地', type: 'deployment' },
+                    { time: 15, description: '南方军发起攻击，冲击联邦军防线', type: 'assault' },
+                    { time: 25, description: '联邦军守住防线，南方军撤退，北方获得胜利', type: 'victory' }
+                ]
+            }
+        };
+
+        // 初始化系统
+        async function initializeSystem() {
+            try {
+                console.log('🚀 初始化战役可视化系统...');
+                
+                // 获取战役参数
+                const urlParams = new URLSearchParams(window.location.search);
+                const battleId = urlParams.get('id');
+                const battleName = urlParams.get('battle');
+                
+                if (!battleId || !battlesDatabase[battleId]) {
+                    showError('未找到指定的战役数据');
+                    return;
+                }
+                
+                // 设置当前战役
+                currentBattleData = battlesDatabase[battleId];
+                
+                // 更新战役信息
+                updateBattleInfo();
+                
+                // 初始化AI系统（立即启动）
+                initializeAI();
+                
+                // 初始化地图
+                await initializeMap();
+                
+                // 隐藏载入画面
+                hideLoading();
+                
+                // 发送欢迎消息给AI
+                setTimeout(() => {
+                    sendWelcomeMessage();
+                }, 2000);
+                
+                console.log('✅ 系统初始化完成，AI已启动');
+                
+            } catch (error) {
+                console.error('❌ 系统初始化失败:', error);
+                showError('系统初始化失败: ' + error.message);
+            }
+        }
+        
+        // 更新战役信息
+        function updateBattleInfo() {
+            document.getElementById('battleName').textContent = currentBattleData.name;
+            document.getElementById('battleYear').textContent =
+                `${currentBattleData.year > 0 ? currentBattleData.year : '前' + Math.abs(currentBattleData.year)}年`;
+        }
+        
+        // 初始化地图
+        async function initializeMap() {
+            return new Promise((resolve, reject) => {
+                try {
+                    // 使用可靠的地图源
+                    viewer = new Cesium.Viewer('cesiumContainer', {
+                        terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+                        imageryProvider: new Cesium.OpenStreetMapImageryProvider({
+                            url: 'https://tile.openstreetmap.org/'
+                        }),
+                        shouldAnimate: true,
+                        animation: false,
+                        timeline: false,
+                        baseLayerPicker: false,
+                        geocoder: false,
+                        homeButton: false,
+                        sceneModePicker: false,
+                        navigationHelpButton: false,
+                        infoBox: false,
+                        selectionIndicator: false,
+                        scene3DOnly: true,
+                        requestRenderMode: false,
+                        maximumRenderTimeChange: Infinity
+                    });
+                    
+                    // 优化设置
+                    viewer.scene.highDynamicRange = false;
+                    viewer.scene.globe.enableLighting = false;
+                    viewer.scene.skyAtmosphere.show = false;
+                    viewer.scene.globe.showGroundAtmosphere = false;
+                    
+                    // 飞转到战役位置
+                    const destination = Cesium.Cartesian3.fromDegrees(
+                        currentBattleData.location.lon,
+                        currentBattleData.location.lat,
+                        20000.0 // 增加高度，获得更好的视野
+                    );
+                    
+                    viewer.camera.flyTo({
+                        destination: destination,
+                        duration: 4.0,
+                        complete: function() {
+                            console.log('📍 已到达战役位置');
+                            document.getElementById('mapStatus').textContent = '加载成功';
+                            resolve();
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error('地图初始化失败:', error);
+                    document.getElementById('mapStatus').textContent = '加载失败';
+                    reject(error);
+                }
+            });
+        }
+        
+        // AI系统初始化
+        function initializeAI() {
+            aiSystem = {
+                sendMessage: async function(message) {
+                    try {
+                        const response = await fetch('/api/v1/llm/military-analysis', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                prompt: buildBattleContext(message)
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            return data.response || '抱歉，AI助手暂时无法回答这个问题。';
+                        } else {
+                            throw new Error(`API错误: ${response.status}`);
+                        }
+                    } catch (error) {
+                        console.error('AI聊天错误:', error);
+                        return '抱歉，AI助手暂时无法响应，请稍后再试。';
+                    }
+                }
+            };
+        }
+        
+        // 发送欢迎消息
+        function sendWelcomeMessage() {
+            const welcomeMessage = `
+🎯 <strong>${currentBattleData.name} - 战役分析</strong><br><br>
+📅 <strong>历史背景：</strong>${currentBattleData.description}<br><br>
+⚔️ <strong>参战双方：</strong><br>
+${currentBattleData.participants.map(p => `• ${p.name} (指挥官: ${p.commander})`).join('<br>')}<br><br>
+🎬 <strong>战役过程：</strong><br>
+${currentBattleData.events.map(e => `• 第${e.time}秒: ${e.description}`).join('<br>')}<br><br>
+💡 建议您现在点击"开始播放"观看3D重现，然后可以问我关于这场战役的任何问题！
+            `;
+            addAIMessage(welcomeMessage, 'assistant');
+        }
+        
+        // 构建AI上下文
+        function buildBattleContext(message) {
+            let context = `关于${currentBattleData.name}`;
+            if (message.includes('这场战役') || message.includes('这个战役') || message.includes('当前')) {
+                context = `用户正在观看${currentBattleData.name}的可视化，询问: ${message}`;
+            }
+            return context;
+        }
+        
+        // 发送AI消息
+        async function sendAIMessage() {
+            const input = document.getElementById('aiInput');
+            const message = input.value.trim();
+            
+            if (!message || !aiSystem) return;
+            
+            // 添加用户消息
+            addAIMessage(message, 'user');
+            input.value = '';
+            
+            // 显示AI思考状态
+            const thinkingMessage = addAIMessage('🤔 正在深入分析这个问题...', 'thinking');
+            
+            try {
+                const response = await aiSystem.sendMessage(message);
+                thinkingMessage.remove();
+                addAIMessage(response, 'assistant');
+            } catch (error) {
+                thinkingMessage.textContent = '❌ 抱歉，AI助手暂时无法响应，请稍后再试。';
+                thinkingMessage.className = 'ai-message ai-assistant-message';
+            }
+        }
+        
+        // 添加AI消息
+        function addAIMessage(content, type) {
+            const messagesContainer = document.getElementById('aiMessages');
+            const messageDiv = document.createElement('div');
+            
+            let cssClass = 'ai-message ';
+            switch (type) {
+                case 'user':
+                    cssClass += 'ai-user-message';
+                    break;
+                case 'thinking':
+                    cssClass += 'ai-thinking-message';
+                    break;
+                case 'system':
+                    cssClass += 'ai-system-message';
+                    break;
+                default:
+                    cssClass += 'ai-assistant-message';
+            }
+            
+            messageDiv.className = cssClass;
+            messageDiv.innerHTML = content;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+        
+        // 播放控制函数（保持原有功能）
+        function togglePlay() {
+            const playBtn = document.getElementById('playBtn');
+            
+            if (!isPlaying) {
+                startBattle();
+            } else {
+                pauseBattle();
+            }
+        }
+        
+        function startBattle() {
+            isPlaying = true;
+            animationTime = 0;
+            processedEvents.clear();
+            
+            document.getElementById('playBtn').textContent = '⏸ 暂停';
+            document.getElementById('playBtn').classList.add('playing');
+            document.getElementById('playStatus').textContent = '播放中';
+            
+            startAnimationLoop();
+            console.log('🎬 开始战役播放');
+        }
+        
+        function pauseBattle() {
+            isPlaying = false;
+            
+            document.getElementById('playBtn').textContent = '▶ 继续';
+            document.getElementById('playBtn').classList.remove('playing');
+            document.getElementById('playStatus').textContent = '已暂停';
+            
+            console.log('⏸ 暂停战役播放');
+        }
+        
+        function resetBattle() {
+            isPlaying = false;
+            animationTime = 0;
+            processedEvents.clear();
+            
+            if (viewer) {
+                viewer.entities.removeAll();
+            }
+            
+            document.getElementById('playBtn').textContent = '▶ 开始播放';
+            document.getElementById('playBtn').classList.remove('playing');
+            document.getElementById('playStatus').textContent = '未开始';
+            document.getElementById('currentEvent').textContent = '等待开始';
+            
+            console.log('↺ 战役已重置');
+        }
+        
+        function startAnimationLoop() {
+            const animationInterval = setInterval(() => {
+                if (!isPlaying) {
+                    clearInterval(animationInterval);
+                    return;
+                }
+                
+                animationTime += 1;
+                processBattleEvents();
+                
+                if (animationTime > 60) {
+                    pauseBattle();
+                    document.getElementById('currentEvent').textContent = '播放完成';
+                }
+            }, 1000);
+        }
+        
+        function processBattleEvents() {
+            currentBattleData.events.forEach((event, index) => {
+                const eventId = `event_${index}`;
+                
+                if (!processedEvents.has(eventId) && animationTime >= event.time) {
+                    console.log(`⚡ 触发事件: ${event.description}`);
+                    
+                    triggerEvent(event);
+                    processedEvents.add(eventId);
+                    document.getElementById('currentEvent').textContent = event.description;
+                    
+                    // AI自动解读当前事件
+                    addAIMessage(`<strong>🎯 当前事件:</strong> ${event.description}`, 'system');
+                }
+            });
+        }
+        
+        function triggerEvent(event) {
+            createBattleEffect(event);
+        }
+        
+        function createBattleEffect(event) {
+            const position = Cesium.Cartesian3.fromDegrees(
+                currentBattleData.location.lon,
+                currentBattleData.location.lat,
+                200
+            );
+            
+            switch (event.type) {
+                case 'deployment':
+                    createDeploymentEffect(position);
+                    break;
+                case 'assault':
+                case 'cavalry_charge':
+                    createAssaultEffect(position);
+                    break;
+                case 'fire_attack':
+                    createFireEffect(position);
+                    break;
+                case 'victory':
+                case 'defeat':
+                    createVictoryEffect(position);
+                    break;
+                default:
+                    createGeneralEffect(position);
+            }
+        }
+        
+        function createDeploymentEffect(position) {
+            currentBattleData.participants.forEach((participant, index) => {
+                const offset = (index - 0.5) * 0.005;
+                const unitPosition = Cesium.Cartesian3.fromDegrees(
+                    currentBattleData.location.lon + offset,
+                    currentBattleData.location.lat,
+                    100
+                );
+                
+                const entity = viewer.entities.add({
+                    position: unitPosition,
+                    point: {
+                        pixelSize: 25,
+                        color: Cesium.Color.fromCssColorString(participant.color),
+                        outlineColor: Cesium.Color.WHITE,
+                        outlineWidth: 3
+                    },
+                    label: {
+                        text: participant.name,
+                        font: '18px Arial Black',
+                        fillColor: Cesium.Color.WHITE,
+                        outlineColor: Cesium.Color.BLACK,
+                        outlineWidth: 3,
+                        style: Cesium.LabelStyle.FILL_AND_OUTLINE
+                    }
+                });
+            });
+        }
+        
+        function createAssaultEffect(position) {
+            const explosionEntity = viewer.entities.add({
+                position: position,
+                point: {
+                    pixelSize: 35,
+                    color: Cesium.Color.ORANGE,
+                    outlineColor: Cesium.Color.RED,
+                    outlineWidth: 4
+                },
+                label: {
+                    text: '⚔️ 攻击！',
+                    font: '20px Arial Black',
+                    fillColor: Cesium.Color.RED,
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 3
+                }
+            });
+            
+            setTimeout(() => {
+                viewer.entities.remove(explosionEntity);
+            }, 6000);
+        }
+        
+        function createFireEffect(position) {
+            const fireEntity = viewer.entities.add({
+                position: position,
+                point: {
+                    pixelSize: 30,
+                    color: Cesium.Color.RED.withAlpha(0.8),
+                    outlineColor: Cesium.Color.ORANGE,
+                    outlineWidth: 3
+                },
+                label: {
+                    text: '🔥 火攻！',
+                    font: '20px Arial Black',
+                    fillColor: Cesium.Color.ORANGE,
+                    outlineColor: Cesium.Color.RED,
+                    outlineWidth: 3
+                }
+            });
+            
+            setTimeout(() => {
+                viewer.entities.remove(fireEntity);
+            }, 10000);
+        }
+        
+        function createVictoryEffect(position) {
+            const victoryEntity = viewer.entities.add({
+                position: position,
+                point: {
+                    pixelSize: 45,
+                    color: Cesium.Color.GOLD,
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 5
+                },
+                label: {
+                    text: '🏆 胜利！',
+                    font: '22px Arial Black',
+                    fillColor: Cesium.Color.GOLD,
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 4
+                }
+            });
+            
+            setTimeout(() => {
+                viewer.entities.remove(victoryEntity);
+            }, 12000);
+        }
+        
+        function createGeneralEffect(position) {
+            const entity = viewer.entities.add({
+                position: position,
+                point: {
+                    pixelSize: 20,
+                    color: Cesium.Color.YELLOW,
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 2
+                }
+            });
+            
+            setTimeout(() => {
+                viewer.entities.remove(entity);
+            }, 4000);
+        }
+        
+        function setCameraView(mode) {
+            if (!currentBattleData) return;
+            
+            const location = currentBattleData.location;
+            
+            switch (mode) {
+                case 'overview':
+                    viewer.camera.flyTo({
+                        destination: Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 30000),
+                        duration: 2.0
+                    });
+                    break;
+                case 'tactical':
+                    viewer.camera.flyTo({
+                        destination: Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 10000),
+                        duration: 2.0
+                    });
+                    break;
+                case 'aerial':
+                    viewer.camera.flyTo({
+                        destination: Cesium.Cartesian3.fromDegrees(location.lon, location.lat, 3000),
+                        duration: 2.0
+                    });
+                    break;
+            }
+        }
+        
+        function showError(message) {
+            // 错误显示在地图窗口中
+            const errorHtml = `
+                <div class="error-message">
+                    ${message}
+                </div>
+            `;
+            document.getElementById('cesiumContainer').innerHTML = errorHtml;
+            hideLoading();
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        
+        // ========== 窗口管理功能 ==========
+        
+        // 隐藏窗口
+        function hideWindow(windowId) {
+            document.getElementById(windowId).style.display = 'none';
+        }
+        
+        // 最小化窗口
+        function minimizeWindow(windowId) {
+            const window = document.getElementById(windowId);
+            window.style.height = '40px';
+            window.querySelector('.ai-chat-content, .control-content, .map-content').style.display = 'none';
+            window.querySelector('.resize-handle').style.display = 'none';
+        }
+        
+        // 最大化窗口
+        function maximizeWindow(windowId) {
+            const window = document.getElementById(windowId);
+            if (windowId === 'aiChatWindow') {
+                window.style.top = '5%';
+                window.style.left = '5%';
+                window.style.width = '90%';
+                window.style.height = '90%';
+            } else if (windowId === 'controlWindow') {
+                window.style.top = '5%';
+                window.style.right = '5%';
+                window.style.width = '30%';
+                window.style.height = '90%';
+            } else if (windowId === 'mapWindow') {
+                window.style.top = '5%';
+                window.style.left = '5%';
+                window.style.width = '90%';
+                window.style.height = '90%';
+            }
+            window.querySelector('.ai-chat-content, .control-content, .map-content').style.display = 'block';
+            window.querySelector('.resize-handle').style.display = 'block';
+        }
+        
+        // 窗口拖拽功能
+        function makeWindowDraggable(windowId) {
+            const window = document.getElementById(windowId);
+            if (!window) {
+                console.warn(`Window ${windowId} not found`);
+                return;
+            }
+            
+            const header = window.querySelector('.window-header');
+            if (!header) {
+                console.warn(`Header not found in ${windowId}`);
+                return;
+            }
+            
+            let isDragging = false;
+            let currentX;
+            let currentY;
+            let initialX;
+            let initialY;
+            
+            header.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+            
+            function dragStart(e) {
+                initialX = e.clientX - window.offsetLeft;
+                initialY = e.clientY - window.offsetTop;
+                
+                if (e.target === header || e.target.parentNode === header) {
+                    isDragging = true;
+                }
+            }
+            
+            function drag(e) {
+                if (isDragging) {
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+                    
+                    window.style.left = currentX + 'px';
+                    window.style.top = currentY + 'px';
+                }
+            }
+            
+            function dragEnd() {
+                initialX = currentX;
+                initialY = currentY;
+                isDragging = false;
+            }
+        }
+        
+        // 窗口缩放功能
+        function makeWindowResizable(windowId) {
+            const window = document.getElementById(windowId);
+            if (!window) {
+                console.warn(`Window ${windowId} not found`);
+                return;
+            }
+            
+            const handles = window.querySelectorAll('.resize-handle');
+            if (handles.length === 0) {
+                console.warn(`Resize handles not found in ${windowId}`);
+                return;
+            }
+            
+            handles.forEach(handle => {
+                handle.addEventListener('mousedown', resizeStart);
+            });
+            
+            let isResizing = false;
+            let startX, startY, startWidth, startHeight;
+            
+            function resizeStart(e) {
+                e.preventDefault();
+                isResizing = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = window.offsetWidth;
+                startHeight = window.offsetHeight;
+                
+                document.addEventListener('mousemove', resize);
+                document.addEventListener('mouseup', resizeEnd);
+            }
+            
+            function resize(e) {
+                if (isResizing) {
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    
+                    if (e.target.classList.contains('e')) {
+                        window.style.width = Math.max(200, startWidth + deltaX) + 'px';
+                    }
+                    if (e.target.classList.contains('s')) {
+                        window.style.height = Math.max(100, startHeight + deltaY) + 'px';
+                    }
+                    if (e.target.classList.contains('se')) {
+                        window.style.width = Math.max(200, startWidth + deltaX) + 'px';
+                        window.style.height = Math.max(100, startHeight + deltaY) + 'px';
+                    }
+                }
+            }
+            
+            function resizeEnd() {
+                isResizing = false;
+                document.removeEventListener('mousemove', resize);
+                document.removeEventListener('mouseup', resizeEnd);
+            }
+        }
+        
+        // 初始化所有窗口的拖拽和缩放
+        function initializeWindowControls() {
+            console.log('初始化窗口控制...');
+            ['aiChatWindow', 'controlWindow', 'mapWindow'].forEach(windowId => {
+                console.log(`初始化窗口: ${windowId}`);
+                makeWindowDraggable(windowId);
+                makeWindowResizable(windowId);
+            });
+            console.log('窗口控制初始化完成');
+        }
+        
+        // 回车键发送AI消息
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && event.target.id === 'aiInput') {
+                sendAIMessage();
+            }
+        });
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎮 战役可视化系统加载完成');
+            
+            // 初始化窗口控制
+            initializeWindowControls();
+            
+            // 初始化系统
+            initializeSystem();
+        });
+        
+        // 键盘快捷键
+        document.addEventListener('keydown', function(event) {
+            switch (event.code) {
+                case 'Space':
+                    event.preventDefault();
+                    togglePlay();
+                    break;
+                case 'KeyR':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        resetBattle();
+                    }
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
